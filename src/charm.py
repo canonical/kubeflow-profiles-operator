@@ -29,6 +29,7 @@ class Operator(CharmBase):
         self.log = logging.getLogger(__name__)
         self.profile_image = OCIImageResource(self, "profile-image")
         self.kfam_image = OCIImageResource(self, "kfam-image")
+
         try:
             self.interfaces = get_interfaces(self)
         except NoVersionsListed as err:
@@ -37,6 +38,8 @@ class Operator(CharmBase):
         except NoCompatibleVersions as err:
             self.model.unit.status = BlockedStatus(str(err))
             return
+        else:
+            self.model.unit.status = ActiveStatus()
 
         for event in [
             self.on.install,
