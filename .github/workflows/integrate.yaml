@@ -76,8 +76,9 @@ jobs:
         set -eux
         charmcraft build
         juju bundle deploy -b tests/bundle.yaml --build
-        juju wait -wvt 300
-        juju status
+
+        # https://bugs.launchpad.net/juju/+bug/1921739
+        (i=60; while ! juju wait -wvt 30 ; do ((--i)) || exit; sleep 1; done)
 
     - name: Test charm
       run: |
@@ -92,9 +93,12 @@ jobs:
       run: juju status
       if: failure()
 
-    - name: Get workload logs
-      run: |
-        kubectl logs --tail 100 -nci-test -ljuju-app
+    - name: Get kubeflow-profiles workload logs
+      run: kubectl logs --tail 100 -nci-test -ljuju-app=kubeflow-profiles -c kubeflow-profiles
+      if: failure()
+
+    - name: Get kubeflow-kfam workload logs
+      run: kubectl logs --tail 100 -nci-test -ljuju-app=kubeflow-profiles -c kubeflow-kfam
       if: failure()
 
     - name: Get operator logs
