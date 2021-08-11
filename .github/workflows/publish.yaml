@@ -30,10 +30,18 @@ jobs:
 
         CS_URL="cs:~kubeflow-charmers/kubeflow-profiles"
 
-        IMAGE=$(yq eval '.resources.oci-image.upstream-source' metadata.yaml)
         charmcraft build
-        docker pull $IMAGE
-        charm push ./*.charm $CS_URL --resource oci-image=$IMAGE
+
+        RESOURCES=""
+        for resource in kfam-image profile-image; do
+          echo Preparing resource: $resource
+          image=$(yq eval ".resources.$resource.upstream-source" metadata.yaml)
+          echo Pulling image $image
+          docker pull $image
+          RESOURCES="$RESOURCES --resource $resource=$image"
+        done 
+        
+        charm push ./*.charm $CS_URL $RESOURCES
 
         REVISION=$(charm show $CS_URL --channel unpublished --format yaml | yq e .id-revision.Revision -)
         OCI_VERSION=$(charm list-resources $CS_URL --format yaml --channel unpublished | yq e .0.revision -)
