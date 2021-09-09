@@ -34,79 +34,41 @@ jobs:
       run: tox -e unit
 
   deploy:
-    name: Test
+    name: Integration Test
     runs-on: ubuntu-latest
-
     steps:
-    - name: Check out repo
-      uses: actions/checkout@v2
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+            provider: microk8s
+      - name: Run test
+        run: |
+          sg microk8s -c "tox -e integration -- --model testing"
 
-    - uses: balchua/microk8s-actions@v0.2.2
-      with:
-        addons: '["dns", "storage", "rbac"]'
+      # TODO: Remove once the actions-operator does this automatically
+      - name: Configure kubectl
+        run: |
+          sg microk8s -c "microk8s config > ~/.kube/config"
 
-    # Remove once this is fixed:
-    # https://github.com/actions/virtual-environments/issues/3185
-    - name: Twiddle with MicroK8s
-      run: |
-        set -eux
-        echo '--kubelet-preferred-address-types="InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP"' | sudo tee -a /var/snap/microk8s/current/args/kube-apiserver
-        sudo snap restart microk8s
-        sg microk8s -c 'microk8s status --wait-ready'
-        kubectl -nkube-system rollout status ds/calico-node
-        kubectl wait --for=condition=available -nkube-system deployment/coredns deployment/hostpath-provisioner
+      - name: Get all
+        run: kubectl get all -A
+        if: failure()
 
-    - name: Install dependencies
-      run: |
-        set -eux
-        sudo pip3 install charmcraft==1.0.0
-        sudo snap install juju --classic
-        sudo snap install juju-helpers --classic
-        sudo snap install juju-wait --classic
-        sudo snap install yq
+      - name: Get juju status
+        run: juju status
+        if: failure()
 
-    # Avoid race condition with storage taking a long time to initialize
-    - name: Wait for storage
-      run: |
-        sg microk8s -c 'microk8s kubectl rollout status deployment/hostpath-provisioner -n kube-system'
+      - name: Get kubeflow-profiles workload logs
+        run: kubectl logs --tail 100 -ntesting -ljuju-app=kubeflow-profiles -c kubeflow-profiles
+        if: failure()
 
-    - name: Bootstrap Juju
-      run: |
-        set -eux
-        sg microk8s -c 'juju bootstrap microk8s uk8s'
-        juju add-model ci-test
+      - name: Get kubeflow-kfam workload logs
+        run: kubectl logs --tail 100 -ntesting -ljuju-app=kubeflow-profiles -c kubeflow-kfam
+        if: failure()
 
-    - name: Deploy charm
-      run: |
-        set -eux
-        charmcraft build
-        juju bundle deploy -b tests/bundle.yaml --build
-
-        # https://bugs.launchpad.net/juju/+bug/1921739
-        (i=60; while ! juju wait -wvt 30 ; do ((--i)) || exit; sleep 1; done)
-
-    - name: Test charm
-      run: |
-        set -eux
-        kubectl apply -f tests/profile.yaml
-
-    - name: Get all
-      run: kubectl get all -A
-      if: failure()
-
-    - name: Get juju status
-      run: juju status
-      if: failure()
-
-    - name: Get kubeflow-profiles workload logs
-      run: kubectl logs --tail 100 -nci-test -ljuju-app=kubeflow-profiles -c kubeflow-profiles
-      if: failure()
-
-    - name: Get kubeflow-kfam workload logs
-      run: kubectl logs --tail 100 -nci-test -ljuju-app=kubeflow-profiles -c kubeflow-kfam
-      if: failure()
-
-    - name: Get operator logs
-      run: kubectl logs --tail 100 -nci-test -ljuju-operator
-      if: failure()
+      - name: Get operator logs
+        run: kubectl logs --tail 100 -ntesting -ljuju-operator
+        if: failure()
 
