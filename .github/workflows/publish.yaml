@@ -47,5 +47,5 @@ jobs:
         OCI_VERSION=$(charm list-resources $CS_URL --format yaml --channel unpublished | yq e .0.revision -)
         charm release \
             --channel edge \
-            --resource oci-image-$OCI_VERSION \
+            $RESOURCES \
             $CS_URL-$REVISION
