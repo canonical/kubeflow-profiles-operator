@@ -43,3 +43,5 @@ async def test_status(ops_test):
 async def test_profile_creation(ops_test):
     run(["juju", "switch", ops_test.model_full_name])
     run(["juju", "kubectl", "apply", "-f", "./tests/integration/profile.yaml"])
+    # TODO: This does not assert anything, and may be failing in CI.  This should assert that a
+    #  namespace with the expected metadata (see label CRD) is created

@@ -71,8 +71,10 @@ class Operator(CharmBase):
             self.log.info(e)
             return
 
+        namespace_labels_filename = "namespace-labels.yaml"
+
         self.model.pod.set_spec(
-            {
+            spec={
                 "version": 3,
                 "serviceAccount": {
                     "roles": [
@@ -118,6 +120,21 @@ class Operator(CharmBase):
                                 "periodSeconds": 30,
                             }
                         },
+                        "volumeConfig": [
+                            {
+                                "name": "namespace-labels-data",
+                                "mountPath": "/etc/profile-controller",
+                                "configMap": {
+                                    "name": "namespace-labels-data",
+                                    "files": [
+                                        {
+                                            "key": namespace_labels_filename,
+                                            "path": namespace_labels_filename,
+                                        }
+                                    ],
+                                },
+                            }
+                        ],
                     },
                     {
                         "name": "kubeflow-kfam",
@@ -147,7 +164,7 @@ class Operator(CharmBase):
                     },
                 ],
             },
-            {
+            k8s_resources={
                 "kubernetesResources": {
                     "customResourceDefinitions": [
                         {"name": crd["metadata"]["name"], "spec": crd["spec"]}
@@ -155,9 +172,17 @@ class Operator(CharmBase):
                             Path("files/crds.yaml").read_text()
                         )
                     ],
-                }
+                },
+                "configMaps": {
+                    "namespace-labels-data": {
+                        namespace_labels_filename: Path(
+                            f"files/{namespace_labels_filename}"
+                        ).read_text(),
+                    }
+                },
             },
         )
+        self.log.info("pod.set_spec() completed without errors")
 
         self.model.unit.status = ActiveStatus()
 
