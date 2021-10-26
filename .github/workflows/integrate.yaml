@@ -43,14 +43,15 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
             provider: microk8s
-      - name: Run test
-        run: |
-          sg microk8s -c "tox -e integration -- --model testing"
-
+            channel: 1.21
       # TODO: Remove once the actions-operator does this automatically
       - name: Configure kubectl
         run: |
           sg microk8s -c "microk8s config > ~/.kube/config"
+
+      - name: Run test
+        run: |
+          sg microk8s -c "tox -e integration -- --model testing"
 
       - name: Get all
         run: kubectl get all -A
