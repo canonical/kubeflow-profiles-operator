@@ -22,22 +22,12 @@ class Operator(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        if not self.unit.is_leader():
-            # We can't do anything useful when not the leader, so do nothing.
-            self.model.unit.status = WaitingStatus("Waiting for leadership")
-            return
+
         self.log = logging.getLogger(__name__)
         self.profile_image = OCIImageResource(self, "profile-image")
         self.kfam_image = OCIImageResource(self, "kfam-image")
 
-        try:
-            self.interfaces = get_interfaces(self)
-        except NoVersionsListed as err:
-            self.model.unit.status = WaitingStatus(str(err))
-            return
-        except NoCompatibleVersions as err:
-            self.model.unit.status = BlockedStatus(str(err))
-            return
+        self.interfaces = None
 
         for event in [
             self.on.install,
@@ -61,6 +51,20 @@ class Operator(CharmBase):
             )
 
     def main(self, event):
+        if not self.unit.is_leader():
+            # We can't do anything useful when not the leader, so do nothing.
+            self.model.unit.status = WaitingStatus("Waiting for leadership")
+            return
+
+        try:
+            self.interfaces = get_interfaces(self)
+        except NoVersionsListed as err:
+            self.model.unit.status = WaitingStatus(str(err))
+            return
+        except NoCompatibleVersions as err:
+            self.model.unit.status = BlockedStatus(str(err))
+            return
+
         try:
             profile_image_details = self.profile_image.fetch()
             kfam_image_details = self.kfam_image.fetch()
@@ -181,6 +185,8 @@ class Operator(CharmBase):
             },
         )
         self.log.info("pod.set_spec() completed without errors")
+
+        # Ideally, we'd have some check_that_I_am_running() helper here
 
         self.model.unit.status = ActiveStatus()
 
