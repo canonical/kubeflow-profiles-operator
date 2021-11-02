@@ -6,7 +6,7 @@ from pathlib import Path
 
 from ops.charm import CharmBase
 from ops.main import main
-from ops.model import ActiveStatus, WaitingStatus, BlockedStatus, StatusBase
+from ops.model import ActiveStatus, WaitingStatus, BlockedStatus, StatusBase, MaintenanceStatus
 from ops.framework import StoredState
 
 from oci_image import OCIImageResource, OCIImageResourceError
@@ -18,8 +18,6 @@ from serialized_data_interface import (
 
 
 class Operator(CharmBase):
-    _stored = StoredState()
-
     def __init__(self, *args):
         super().__init__(*args)
 
@@ -47,7 +45,6 @@ class Operator(CharmBase):
         # status.  I could also see a case for using `self._some_status_helper(raise_status=True)`
         # that would set self.model.unit.status automatically if != Active
 
-        # Check if we have anything we depend on
         if not isinstance(dependency_status := self._check_dependencies(), ActiveStatus):
             self.model.unit.status = dependency_status
             return
@@ -56,6 +53,7 @@ class Operator(CharmBase):
             self.model.unit.status = is_leader
             return
 
+        self.model.unit.status = MaintenanceStatus("Setting pod spec")
         self._set_pod_spec()
 
         self.update_status(event)
@@ -80,6 +78,12 @@ class Operator(CharmBase):
         # If we leave the validation of relation versions in this function, we need to also do:
         self.update_status(event)
 
+    def update_status(self, event):
+        # This method should always result in a status being set to something as it follows things
+        # like install's MaintenanceStatus
+        self.model.unit.status = self._get_application_status()
+        # This could also try to fix a broken application if status != Active
+
     def _send_relation_data(self):
         if self.interfaces["kubeflow-profiles"]:
             self.interfaces["kubeflow-profiles"].send_data(
@@ -88,10 +92,6 @@ class Operator(CharmBase):
                     "service-port": str(self.model.config["port"]),
                 }
             )
-
-    def update_status(self, event):
-        self.model.unit.status = self._get_application_status()
-        # This could also try to fix a broken application if status != Active
 
     def _check_dependencies(self) -> StatusBase:
         # TODO: Check if any dependencies required by this charm are available and Block otherwise
@@ -119,7 +119,7 @@ class Operator(CharmBase):
     def _set_pod_spec(self):
         namespace_labels_filename = "namespace-labels.yaml"
 
-        # Let this on its own as I think it is just valid for install?
+        # Left this on its own as I think it is just valid for install?
         try:
             profile_image_details = self.profile_image.fetch()
             kfam_image_details = self.kfam_image.fetch()
