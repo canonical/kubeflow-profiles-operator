@@ -6,7 +6,7 @@ from pathlib import Path
 
 from ops.charm import CharmBase
 from ops.main import main
-from ops.model import ActiveStatus, WaitingStatus, BlockedStatus
+from ops.model import ActiveStatus, WaitingStatus, BlockedStatus, StatusBase
 from ops.framework import StoredState
 
 from oci_image import OCIImageResource, OCIImageResourceError
@@ -22,22 +22,10 @@ class Operator(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        if not self.unit.is_leader():
-            # We can't do anything useful when not the leader, so do nothing.
-            self.model.unit.status = WaitingStatus("Waiting for leadership")
-            return
+
         self.log = logging.getLogger(__name__)
         self.profile_image = OCIImageResource(self, "profile-image")
         self.kfam_image = OCIImageResource(self, "kfam-image")
-
-        try:
-            self.interfaces = get_interfaces(self)
-        except NoVersionsListed as err:
-            self.model.unit.status = WaitingStatus(str(err))
-            return
-        except NoCompatibleVersions as err:
-            self.model.unit.status = BlockedStatus(str(err))
-            return
 
         for event in [
             self.on.install,
@@ -45,13 +33,54 @@ class Operator(CharmBase):
             self.on.upgrade_charm,
             self.on.config_changed,
         ]:
-            self.framework.observe(event, self.main)
+            self.framework.observe(event, self.install)
 
-        self.framework.observe(
-            self.on["kubeflow-profiles"].relation_changed, self.send_info
-        )
+        # This was on relation_changed - should it be on relation_joined?  Or both?
+        # Can sending data on relation_changed lead to an infinite loop?
+        self.framework.observe(self.on["kubeflow-profiles"].relation_joined, self.provide_profiles_relation)
+        self.framework.observe(self.on["kubeflow-profiles"].relation_changed, self.provide_profiles_relation)
 
-    def send_info(self, event):
+        self.framework.observe(self.on.update_status, self.update_status)
+
+    def install(self, event):
+        # I think we've discussed not wanting to set status in helpers, so helpers here return
+        # status.  I could also see a case for using `self._some_status_helper(raise_status=True)`
+        # that would set self.model.unit.status automatically if != Active
+
+        # Check if we have anything we depend on
+        if not isinstance(dependency_status := self._check_dependencies(), ActiveStatus):
+            self.model.unit.status = dependency_status
+            return
+
+        if not isinstance(is_leader := self._check_is_leader(), ActiveStatus):
+            self.model.unit.status = is_leader
+            return
+
+        self._set_pod_spec()
+
+        self.update_status(event)
+
+    def provide_profiles_relation(self, event):
+        # This charm provides a relation - should this validation happen on the provider side or
+        # the client side?  Kubeflow Profiles works properly regardless of whether this relation
+        # is established, the only thing that is blocked is any user of the profile.
+        # At most, these feel like warnings that should still leave profiles Active
+
+        # Validate relation versions
+        try:
+            self.interfaces = get_interfaces(self)
+        except NoVersionsListed as err:
+            self.model.unit.status = WaitingStatus(str(err))
+            return
+        except NoCompatibleVersions as err:
+            self.model.unit.status = BlockedStatus(str(err))
+
+        self._send_relation_data()
+
+        # If we leave the validation of relation versions in this function, we need to also do:
+        self.update_status(event)
+
+    def _send_relation_data(self):
         if self.interfaces["kubeflow-profiles"]:
             self.interfaces["kubeflow-profiles"].send_data(
                 {
@@ -60,7 +89,37 @@ class Operator(CharmBase):
                 }
             )
 
-    def main(self, event):
+    def update_status(self, event):
+        self.model.unit.status = self._get_application_status()
+        # This could also try to fix a broken application if status != Active
+
+    def _check_dependencies(self) -> StatusBase:
+        # TODO: Check if any dependencies required by this charm are available and Block otherwise
+        #       This charm would check for Istio CRDs, maybe other stuff
+
+        # This might make sense to return a list of statuses in case we're missing multiple things
+        return ActiveStatus()
+
+    def _get_application_status(self) -> StatusBase:
+        # TODO: Do whatever checks are needed to confirm we are actually working correctly
+        #       Maybe check for key deployments, etc?
+
+        # Until we have a real check - cheat :)  Note that this needs to be fleshed out if actually
+        # used by a relation hook
+        return ActiveStatus()
+
+    # TODO: I think there's a better way to do the return type hint here
+    def _check_is_leader(self) -> StatusBase:
+        if not self.unit.is_leader():
+            return WaitingStatus("Waiting for leadership")
+        else:
+            # Or we could return None. It felt odd that this function would return a status or None
+            return ActiveStatus()
+
+    def _set_pod_spec(self):
+        namespace_labels_filename = "namespace-labels.yaml"
+
+        # Let this on its own as I think it is just valid for install?
         try:
             profile_image_details = self.profile_image.fetch()
             kfam_image_details = self.kfam_image.fetch()
@@ -68,8 +127,6 @@ class Operator(CharmBase):
             self.model.unit.status = e.status
             self.log.info(e)
             return
-
-        namespace_labels_filename = "namespace-labels.yaml"
 
         self.model.pod.set_spec(
             spec={
@@ -181,8 +238,6 @@ class Operator(CharmBase):
             },
         )
         self.log.info("pod.set_spec() completed without errors")
-
-        self.model.unit.status = ActiveStatus()
 
 
 if __name__ == "__main__":
