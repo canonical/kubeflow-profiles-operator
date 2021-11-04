@@ -4,7 +4,7 @@ import logging
 import yaml
 from pathlib import Path
 
-from ops.charm import CharmBase
+from ops.charm import CharmBase, HookEvent, EventSource, ObjectEvents
 from ops.main import main
 from ops.model import ActiveStatus, WaitingStatus, BlockedStatus
 from ops.framework import StoredState
@@ -17,7 +17,19 @@ from serialized_data_interface import (
 )
 
 
+class CustomEvent(HookEvent):
+    def __init__(self, handle, message="No message"):
+        super().__init__(handle)
+        self.i_am_custom = True
+        self.message = message
+
+
+# class CharmCustomEvents(ObjectEvents):
+#     custom_event = EventSource(CustomEvent)
+
+
 class Operator(CharmBase):
+    # custom_events = CharmCustomEvents()
     _stored = StoredState()
 
     def __init__(self, *args):
@@ -51,6 +63,20 @@ class Operator(CharmBase):
             self.on["kubeflow-profiles"].relation_changed, self.send_info
         )
 
+        self.custom_event = CustomEvent
+
+        # self.on.define_event("custom_event", self.custom_events.custom_event)
+        self.on.define_event("custom_event", self.custom_event)
+        self.framework.observe(self.on.custom_event, self._handle_custom_event)
+        # self.custom_events.custom_event.emit("from __init__")
+        # self.custom_event.emit()
+        self.on.custom_event.emit()
+
+    # def _handle_custom_event(self, event, message):
+    def _handle_custom_event(self, event):
+        self.log.error("HANDLING CUSTOM EVENT!")
+        # self.log.error(f"message: '{message}")
+
     def send_info(self, event):
         if self.interfaces["kubeflow-profiles"]:
             self.interfaces["kubeflow-profiles"].send_data(
@@ -61,6 +87,10 @@ class Operator(CharmBase):
             )
 
     def main(self, event):
+        # self.custom_events.custom_event.emit("from set_pod_spec")
+        # self.custom_event.emit()
+        self.on.custom_event.emit()
+
         try:
             profile_image_details = self.profile_image.fetch()
             kfam_image_details = self.kfam_image.fetch()
@@ -101,6 +131,8 @@ class Operator(CharmBase):
                             "",
                             "-workload-identity",
                             "",
+                            "cluster-admin",  # This might be needed for multiuser kfp?  Without it I get kfp errors in UI when loading experiments page, with error that says we don't have a cluster admin.
+                            "admin",
                         ],
                         "ports": [
                             {
@@ -140,7 +172,7 @@ class Operator(CharmBase):
                         "command": ["/access-management"],
                         "args": [
                             "-cluster-admin",
-                            "admin",
+                            "admin",  # Is this the name used for the profile that is generated automatically before any logins?
                             "-userid-header",
                             "kubeflow-userid",
                             "-userid-prefix",
