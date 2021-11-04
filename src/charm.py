@@ -24,12 +24,7 @@ class CustomEvent(HookEvent):
         self.message = message
 
 
-# class CharmCustomEvents(ObjectEvents):
-#     custom_event = EventSource(CustomEvent)
-
-
 class Operator(CharmBase):
-    # custom_events = CharmCustomEvents()
     _stored = StoredState()
 
     def __init__(self, *args):
@@ -65,17 +60,13 @@ class Operator(CharmBase):
 
         self.custom_event = CustomEvent
 
-        # self.on.define_event("custom_event", self.custom_events.custom_event)
         self.on.define_event("custom_event", self.custom_event)
         self.framework.observe(self.on.custom_event, self._handle_custom_event)
-        # self.custom_events.custom_event.emit("from __init__")
-        # self.custom_event.emit()
+
         self.on.custom_event.emit()
 
-    # def _handle_custom_event(self, event, message):
     def _handle_custom_event(self, event):
         self.log.error("HANDLING CUSTOM EVENT!")
-        # self.log.error(f"message: '{message}")
 
     def send_info(self, event):
         if self.interfaces["kubeflow-profiles"]:
@@ -87,8 +78,6 @@ class Operator(CharmBase):
             )
 
     def main(self, event):
-        # self.custom_events.custom_event.emit("from set_pod_spec")
-        # self.custom_event.emit()
         self.on.custom_event.emit()
 
         try:
