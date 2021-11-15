@@ -10,12 +10,12 @@ resources:
     type: oci-image
     description: Profile controller image
     auto-fetch: true
-    upstream-source: public.ecr.aws/j1r0q0g6/notebooks/profile-controller:v1.4-rc.0
+    upstream-source: public.ecr.aws/j1r0q0g6/notebooks/profile-controller:v1.4
   kfam-image:
     type: oci-image
     description: Access Management image
     auto-fetch: true
-    upstream-source: public.ecr.aws/j1r0q0g6/notebooks/access-management:v1.4-rc.0
+    upstream-source: public.ecr.aws/j1r0q0g6/notebooks/access-management:v1.4
 provides:
   kubeflow-profiles:
     interface: k8s-service
