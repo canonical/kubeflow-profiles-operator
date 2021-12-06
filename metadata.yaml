@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 
 name: kubeflow-profiles
-display-name: Kubeflow Profiles
 summary: Kubeflow Profiles and Access Management
 description: Kubeflow Profiles and Access Management
 maintainers: [Juju Developers <juju@lists.ubuntu.com>]
