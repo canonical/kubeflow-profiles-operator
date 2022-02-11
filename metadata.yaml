@@ -3,6 +3,7 @@
 name: kubeflow-profiles
 summary: Kubeflow Profiles and Access Management
 description: Kubeflow Profiles and Access Management
+min-juju-version: "2.9.0"
 series: [kubernetes]
 resources:
   profile-image:
