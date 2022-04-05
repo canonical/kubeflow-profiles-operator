@@ -1,8 +1,10 @@
 name: CI
 
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   lint:
@@ -10,28 +12,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out code
-      uses: actions/checkout@v2
+      - name: Check out code
+        uses: actions/checkout@v2
 
-    - name: Install dependencies
-      run: sudo apt-get install python3-pip tox
+      - name: Install dependencies
+        run: sudo apt-get install python3-pip tox
 
-    - name: Lint code
-      run: tox -e lint
+      - name: Lint code
+        run: tox -e lint
 
   unit:
     name: Unit Test
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out code
-      uses: actions/checkout@v2
+      - name: Check out code
+        uses: actions/checkout@v2
 
-    - name: Install dependencies
-      run: sudo apt-get install python3-pip tox
+      - name: Install dependencies
+        run: sudo apt-get install python3-pip tox
 
-    - name: Run unit tests
-      run: tox -e unit
+      - name: Run unit tests
+        run: tox -e unit
 
   deploy:
     name: Integration Test
@@ -42,9 +44,9 @@ jobs:
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
-            provider: microk8s
-            channel: 1.21/stable
-            charmcraft-channel: latest/candidate
+          provider: microk8s
+          channel: 1.21/stable
+          charmcraft-channel: latest/candidate
       # TODO: Remove once the actions-operator does this automatically
       - name: Configure kubectl
         run: |
@@ -73,4 +75,3 @@ jobs:
       - name: Get operator logs
         run: kubectl logs --tail 100 -ntesting -ljuju-operator
         if: failure()
-
