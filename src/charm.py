@@ -196,7 +196,7 @@ class KubeflowProfilesOperator(CharmBase):
                         "-userid-header "
                         "kubeflow-userid "
                         "-userid-prefix "
-                        " "
+                        ""
                         ),
                         "startup": "enabled",
                     }
@@ -219,9 +219,9 @@ class KubeflowProfilesOperator(CharmBase):
         Learn more about Pebble layers at https://github.com/canonical/pebble
         """
         try:
-            with open("files/namespace-labels.yaml", encoding="utf-8") as labels_file:
+            with open("src/files/namespace-labels.yaml", encoding="utf-8") as labels_file:
                 labels = labels_file.read()
-                self.profiles_container.push('/etc/profile-/namespace-labels.yaml', labels, make_dirs=True)
+                self.profiles_container.push('/etc/profile-controller/namespace-labels.yaml', labels, make_dirs=True)
 
             update_layer(
                 self._profiles_container_name,

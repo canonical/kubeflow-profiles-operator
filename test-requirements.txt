@@ -4,6 +4,6 @@
 black
 flake8
 flake8-copyright<0.3
-lightkube<0.9
+lightkube==0.11.0
 pytest
 tenacity<8.1
