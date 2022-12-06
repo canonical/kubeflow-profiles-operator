@@ -277,7 +277,8 @@ class KubeflowProfilesOperator(CharmBase):
     def _check_leader(self):
         if not self.unit.is_leader():
             # We can't do anything useful when not the leader, so do nothing.
-            raise CheckFailed("Waiting for leadership", WaitingStatus)
+            self.logger.info("Not a leader, skipping setup")
+            raise ErrorWithStatus("Waiting for leadership", WaitingStatus)
 
     def _check_container_connection(self, container):
         if not container.can_connect():

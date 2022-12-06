@@ -174,7 +174,7 @@ def delete_all_from_yaml(yaml_file: str, lightkube_client: lightkube.Client = No
 def validate_profile_namespace(
     client: lightkube.Client,
     profile_name: str,
-    namespace_label_file: str = "./files/namespace-labels.yaml",
+    namespace_label_file: str = "./src/files/namespace-labels.yaml",
 ):
     """Validates that a namespace for a Profile exists and has the expected properties
 
