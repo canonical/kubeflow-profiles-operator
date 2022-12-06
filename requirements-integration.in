@@ -1,0 +1,7 @@
+aiohttp
+jinja2
+juju
+lightkube
+pytest-operator
+requests
+-r requirements.txt
