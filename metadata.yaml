@@ -5,11 +5,11 @@ summary: Kubeflow Profiles and Access Management
 description: Kubeflow Profiles and Access Management
 containers:
   kubeflow-profiles:
-    resource: profiles-image
+    resource: profile-image
   kubeflow-kfam:
     resource: kfam-image
 resources:
-  profiles-image:
+  profile-image:
     type: oci-image
     description: Profile controller image
     auto-fetch: true

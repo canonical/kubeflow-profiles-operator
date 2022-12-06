@@ -109,6 +109,7 @@ class KubeflowProfilesOperator(CharmBase):
         try:
             self.unit.status = MaintenanceStatus("Creating K8S resources")
             self.k8s_resource_handler.apply()
+
         except ApiError:
             raise ErrorWithStatus("K8S resources creation failed", BlockedStatus)
         self.model.unit.status = MaintenanceStatus("K8S resources created")
@@ -196,7 +197,7 @@ class KubeflowProfilesOperator(CharmBase):
                         "-userid-header "
                         "kubeflow-userid "
                         "-userid-prefix "
-                        ""
+                        "\"\""
                         ),
                         "startup": "enabled",
                     }
@@ -259,120 +260,6 @@ class KubeflowProfilesOperator(CharmBase):
                 self.log.info(str(e.msg))
 
         self.unit.status = ActiveStatus()
-
-
-    # self.model.pod.set_spec(
-    #     spec={
-    #         "version": 3,
-    #         "serviceAccount": {
-    #             "roles": [
-    #                 {
-    #                     "global": True,
-    #                     "rules": [
-    #                         {
-    #                             "apiGroups": ["*"],
-    #                             "resources": ["*"],
-    #                             "verbs": ["*"],
-    #                         },
-    #                         {"nonResourceURLs": ["*"], "verbs": ["*"]},
-    #                     ],
-    #                 }
-    #             ]
-    #         },
-    #         "containers": [
-    #             {
-    #                 "name": "kubeflow-profiles",
-    #                 "imageDetails": profile_image_details,
-    #                 "command": ["/manager"],
-    #                 "args": [
-    #                     "-userid-header",
-    #                     "kubeflow-userid",
-    #                     "-userid-prefix",
-    #                     "",
-    #                     "-workload-identity",
-    #                     "",
-    #                 ],
-    #                 "ports": [
-    #                     {
-    #                         "name": "manager",
-    #                         "containerPort": self.model.config["manager-port"],
-    #                     }
-    #                 ],
-    #                 "kubernetes": {
-    #                     "livenessProbe": {
-    #                         "httpGet": {
-    #                             "path": "/metrics",
-    #                             "port": self.model.config["manager-port"],
-    #                         },
-    #                         "initialDelaySeconds": 30,
-    #                         "periodSeconds": 30,
-    #                     }
-    #                 },
-    #                 "volumeConfig": [
-    #                     {
-    #                         "name": "namespace-labels-data",
-    #                         "mountPath": "/etc/profile-controller",
-    #                         "configMap": {
-    #                             "name": "namespace-labels-data",
-    #                             "files": [
-    #                                 {
-    #                                     "key": namespace_labels_filename,
-    #                                     "path": namespace_labels_filename,
-    #                                 }
-    #                             ],
-    #                         },
-    #                     }
-    #                 ],
-    #             },
-    #             {
-    #                 "name": "kubeflow-kfam",
-    #                 "imageDetails": kfam_image_details,
-    #                 "command": ["/access-management"],
-    #                 "args": [
-    #                     "-cluster-admin",
-    #                     "admin",
-    #                     "-userid-header",
-    #                     "kubeflow-userid",
-    #                     "-userid-prefix",
-    #                     "",
-    #                 ],
-    #                 "ports": [
-    #                     {"name": "http", "containerPort": self.model.config["port"]}
-    #                 ],
-    #                 "kubernetes": {
-    #                     "livenessProbe": {
-    #                         "httpGet": {
-    #                             "path": "/metrics",
-    #                             "port": self.model.config["port"],
-    #                         },
-    #                         "initialDelaySeconds": 30,
-    #                         "periodSeconds": 30,
-    #                     }
-    #                 },
-    #             },
-    #         ],
-    #     },
-    #     k8s_resources={
-    #         "kubernetesResources": {
-    #             "customResourceDefinitions": [
-    #                 {"name": crd["metadata"]["name"], "spec": crd["spec"]}
-    #                 for crd in yaml.safe_load_all(
-    #                     Path("files/crds.yaml").read_text()
-    #                 )
-    #             ],
-    #         },
-    #         "configMaps": {
-    #             "namespace-labels-data": {
-    #                 namespace_labels_filename: Path(
-    #                     f"files/{namespace_labels_filename}"
-    #                 ).read_text(),
-    #             }
-    #         },
-    #     },
-    # )
-    #self.log.info("pod.set_spec() completed without errors")
-
-    #self.model.unit.status = ActiveStatus()
 
     def _send_info(self, event, interfaces):
         if interfaces["kubeflow-profiles"]:
@@ -504,7 +391,7 @@ class KubeflowProfilesOperator(CharmBase):
 
         self._send_info(event, interfaces)
 
-        namespace_labels_filename = "namespace-labels.yaml"
+        self.model.unit.status = ActiveStatus()
 
 
 class CheckFailed(Exception):

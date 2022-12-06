@@ -5,12 +5,12 @@ import pytest
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.testing import Harness
 
-from charm import Operator
+from charm import KubeflowProfilesOperator
 
 
 @pytest.fixture
 def harness():
-    return Harness(Operator)
+    return Harness(KubeflowProfilesOperator)
 
 
 def test_not_leader(harness):
