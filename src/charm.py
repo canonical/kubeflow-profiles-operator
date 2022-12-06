@@ -3,14 +3,13 @@
 # See LICENSE file for licensing details.
 
 import logging
-import yaml
 import tempfile
 from pathlib import Path
 from subprocess import check_call
 
 from ops.charm import CharmBase
 from ops.main import main
-from ops.pebble import Layer, ChangeError
+from ops.pebble import Layer
 from ops.model import ActiveStatus, WaitingStatus, BlockedStatus, MaintenanceStatus
 from ops.framework import StoredState
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
@@ -21,19 +20,17 @@ from lightkube.models.core_v1 import ServicePort
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube import ApiError
 
-from oci_image import OCIImageResource, OCIImageResourceError
+from oci_image import OCIImageResourceError
 from serialized_data_interface import (
     NoCompatibleVersions,
     NoVersionsListed,
     get_interfaces,
 )
 
-K8S_RESOURCE_FILES=[
-    "src/files/auth_manifests.yaml.j2",
-    "src/files/crds.yaml.j2",
-]
+K8S_RESOURCE_FILES = ["src/files/auth_manifests.yaml.j2", "src/files/crds.yaml.j2"]
 
-SSL_CONFIG_FILE="/files/ssl.conf.j2"
+SSL_CONFIG_FILE = "/files/ssl.conf.j2"
+
 
 class KubeflowProfilesOperator(CharmBase):
     _stored = StoredState()
@@ -49,24 +46,24 @@ class KubeflowProfilesOperator(CharmBase):
         manager_port = ServicePort(int(self._manager_port), name="manager")
         kfam_port = ServicePort(int(self._kfam_port), name="http")
         self.service_patcher = KubernetesServicePatch(
-            self,
-            [manager_port, kfam_port],
-            service_name=f"{self.model.app.name}",
+            self, [manager_port, kfam_port], service_name=f"{self.model.app.name}"
         )
 
-        self._profiles_container_name="kubeflow-profiles"
-        self._profiles_container=self.unit.get_container(self._profiles_container_name)
+        self._profiles_container_name = "kubeflow-profiles"
+        self._profiles_container = self.unit.get_container(
+            self._profiles_container_name
+        )
 
-        self._kfam_container_name="kubeflow-kfam"
-        self._kfam_container=self.unit.get_container(self._kfam_container_name)
+        self._kfam_container_name = "kubeflow-kfam"
+        self._kfam_container = self.unit.get_container(self._kfam_container_name)
 
-        self._namespace=self.model.name
-        self._name=self.model.app.name
+        self._namespace = self.model.name
+        self._name = self.model.app.name
         self._lightkube_field_manager = "lightkube"
         self._k8s_resource_handler = None
 
-        #generate certs
-        #self._stored.set_default(**self._gen_certs())
+        # generate certs
+        # self._stored.set_default(**self._gen_certs())
 
         for event in [
             self.on.install,
@@ -76,7 +73,9 @@ class KubeflowProfilesOperator(CharmBase):
             self.on["kubeflow-profiles"].relation_changed,
         ]:
             self.framework.observe(event, self.main)
-        self.framework.observe(self.on.kubeflow_profiles_pebble_ready, self._on_kubeflow_profiles_ready)
+        self.framework.observe(
+            self.on.kubeflow_profiles_pebble_ready, self._on_kubeflow_profiles_ready
+        )
         self.framework.observe(self.on.kubeflow_kfam_pebble_ready, self._on_kfam_ready)
 
     @property
@@ -118,17 +117,14 @@ class KubeflowProfilesOperator(CharmBase):
         """Perform installation only actions."""
         self._check_container_connection(self.profiles_container)
         self._check_container_connection(self.kfam_container)
-        #self._upload_certs_to_container()
+        # self._upload_certs_to_container()
 
         # proceed with other actions
         self.main(_)
 
     @property
     def _context(self):
-        context = {
-            "app_name": self.model.app.name,
-            "namespace": self.model.name
-        }
+        context = {"app_name": self.model.app.name, "namespace": self.model.name}
         return context
 
     def _upload_certs_to_container(self):
@@ -149,9 +145,8 @@ class KubeflowProfilesOperator(CharmBase):
             make_dirs=True,
         )
 
-
     @property
-    def _profiles_pebble_layer(self)-> Layer:
+    def _profiles_pebble_layer(self) -> Layer:
         """Return the Pebble layer for the workload."""
         return Layer(
             {
@@ -159,31 +154,33 @@ class KubeflowProfilesOperator(CharmBase):
                     self._profiles_container_name: {
                         "override": "replace",
                         "summary": "entry point for kubeflow profiles",
-                        "command": ("/manager "
-                        "-userid-header "
-                        "kubeflow-userid "
-                        "-userid-prefix "
-                        " "
-                        "-workload-identity "
-                        " "),
+                        "command": (
+                            "/manager "
+                            "-userid-header "
+                            "kubeflow-userid "
+                            "-userid-prefix "
+                            " "
+                            "-workload-identity "
+                            " "
+                        ),
                         "startup": "enabled",
-                    },
+                    }
                 },
-        #         "checks": {
-        #             "kubeflow-profiles-ready": {
-        #                 "override": "replace",
-        #                 "http": {"url": "http://localhost:8080/metrics/health/ready"},
-        #                 },
-        #             "kubeflow-profiles-alive": {
-        #                 "override": "replace",
-        #                 "http": {"url": "http://localhost:8080/metrics/health/alive"},
-        #     },
-        # },
+                #         "checks": {
+                #             "kubeflow-profiles-ready": {
+                #                 "override": "replace",
+                #                 "http": {"url": "http://localhost:8080/metrics/health/ready"},
+                #                 },
+                #             "kubeflow-profiles-alive": {
+                #                 "override": "replace",
+                #                 "http": {"url": "http://localhost:8080/metrics/health/alive"},
+                #     },
+                # },
             }
         )
 
     @property
-    def _kfam_pebble_layer(self)-> Layer:
+    def _kfam_pebble_layer(self) -> Layer:
         """Return the Pebble layer for the workload."""
         return Layer(
             {
@@ -191,27 +188,28 @@ class KubeflowProfilesOperator(CharmBase):
                     self._kfam_container_name: {
                         "override": "replace",
                         "summary": "entry point for kubeflow access management",
-                        "command": ("/access-management "
-                        "-cluster-admin "
-                        "admin "
-                        "-userid-header "
-                        "kubeflow-userid "
-                        "-userid-prefix "
-                        "\"\""
+                        "command": (
+                            "/access-management "
+                            "-cluster-admin "
+                            "admin "
+                            "-userid-header "
+                            "kubeflow-userid "
+                            "-userid-prefix "
+                            '""'
                         ),
                         "startup": "enabled",
                     }
                 },
-        #         "checks": {
-        #             "kubeflow-kfam-ready": {
-        #                 "override": "replace",
-        #                 "http": {"url": "http://localhost:8081/metrics/health/ready"},
-        #                 },
-        #             "kubeflow-kfam-alive": {
-        #                 "override": "replace",
-        #                 "http": {"url": "http://localhost:8081/metrics/health/alive"},
-        #     },
-        # },
+                #         "checks": {
+                #             "kubeflow-kfam-ready": {
+                #                 "override": "replace",
+                #                 "http": {"url": "http://localhost:8081/metrics/health/ready"},
+                #                 },
+                #             "kubeflow-kfam-alive": {
+                #                 "override": "replace",
+                #                 "http": {"url": "http://localhost:8081/metrics/health/alive"},
+                #     },
+                # },
             }
         )
 
@@ -220,9 +218,15 @@ class KubeflowProfilesOperator(CharmBase):
         Learn more about Pebble layers at https://github.com/canonical/pebble
         """
         try:
-            with open("src/files/namespace-labels.yaml", encoding="utf-8") as labels_file:
+            with open(
+                "src/files/namespace-labels.yaml", encoding="utf-8"
+            ) as labels_file:
                 labels = labels_file.read()
-                self.profiles_container.push('/etc/profile-controller/namespace-labels.yaml', labels, make_dirs=True)
+                self.profiles_container.push(
+                    "/etc/profile-controller/namespace-labels.yaml",
+                    labels,
+                    make_dirs=True,
+                )
 
             update_layer(
                 self._profiles_container_name,
@@ -240,11 +244,11 @@ class KubeflowProfilesOperator(CharmBase):
 
         self.unit.status = ActiveStatus()
 
-    def _on_kfam_ready(self,event):
+    def _on_kfam_ready(self, event):
         """Define and start a workload using the Pebble API.
         Learn more about Pebble layers at https://github.com/canonical/pebble
         """
-        try:    
+        try:
             update_layer(
                 self._kfam_container_name,
                 self.kfam_container,
@@ -291,7 +295,6 @@ class KubeflowProfilesOperator(CharmBase):
     def _gen_certs(self):
         """Generate certificates."""
         # generate SSL configuration based on template
-        model = self.model.name
 
         try:
             ssl_conf_template = open(SSL_CONFIG_FILE)
@@ -305,9 +308,23 @@ class KubeflowProfilesOperator(CharmBase):
             Path(tmp_dir + "/profiles-cert-gen-ssl.conf").write_text(ssl_conf)
 
             # execute OpenSSL commands
-            check_call(["openssl", "genrsa", "-out", tmp_dir + "/profiles-cert-gen-ca.key", "2048"])
             check_call(
-                ["openssl", "genrsa", "-out", tmp_dir + "/profiles-cert-gen-server.key", "2048"]
+                [
+                    "openssl",
+                    "genrsa",
+                    "-out",
+                    tmp_dir + "/profiles-cert-gen-ca.key",
+                    "2048",
+                ]
+            )
+            check_call(
+                [
+                    "openssl",
+                    "genrsa",
+                    "-out",
+                    tmp_dir + "/profiles-cert-gen-server.key",
+                    "2048",
+                ]
             )
             check_call(
                 [
