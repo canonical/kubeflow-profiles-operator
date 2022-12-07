@@ -20,7 +20,6 @@ from lightkube.models.core_v1 import ServicePort
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube import ApiError
 
-from oci_image import OCIImageResourceError
 from serialized_data_interface import (
     NoCompatibleVersions,
     NoVersionsListed,
@@ -80,12 +79,12 @@ class KubeflowProfilesOperator(CharmBase):
 
     @property
     def profiles_container(self):
-        """"Return profile container"""
+        """Return profile container"""
         return self._profiles_container
 
     @property
     def kfam_container(self):
-        """"Return kfam container"""
+        """Return kfam container"""
         return self._kfam_container
 
     @property
@@ -281,8 +280,9 @@ class KubeflowProfilesOperator(CharmBase):
             raise ErrorWithStatus("Waiting for leadership", WaitingStatus)
 
     def _check_container_connection(self, container):
+        """Check if connection can be made with container."""
         if not container.can_connect():
-            raise CheckFailed("Pod startup is not complete", MaintenanceStatus)
+            raise ErrorWithStatus("Pod startup is not complete", MaintenanceStatus)
 
     def _get_interfaces(self):
         try:
@@ -403,7 +403,7 @@ class KubeflowProfilesOperator(CharmBase):
 
             interfaces = self._get_interfaces()
 
-        except (CheckFailed, OCIImageResourceError) as error:
+        except ErrorWithStatus as error:
             self.model.unit.status = error.status
             return
 
