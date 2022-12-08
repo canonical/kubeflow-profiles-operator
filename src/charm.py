@@ -211,6 +211,10 @@ class KubeflowProfilesOperator(CharmBase):
     
     def _update_profiles_container(self, event) -> None:
         """Updates the Profiles Pebble configuration layer if changed."""
+        if not self.profiles_container.can_connect():
+            self.unit.status = WaitingStatus("Waiting to connect to Profiles container")
+            event.defer()
+            return
 
         self.unit.status = MaintenanceStatus("Configuring Profiles layer")
         self._update_profiles_layer()
