@@ -3,13 +3,13 @@
 # See LICENSE file for licensing details.
 
 import logging
-import tempfile
+import traceback
 from pathlib import Path
 from subprocess import check_call
 
 from ops.charm import CharmBase
 from ops.main import main
-from ops.pebble import Layer
+from ops.pebble import Layer, ChangeError
 from ops.model import ActiveStatus, WaitingStatus, BlockedStatus, MaintenanceStatus
 from ops.framework import StoredState
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
@@ -27,9 +27,6 @@ from serialized_data_interface import (
 )
 
 K8S_RESOURCE_FILES = ["src/files/auth_manifests.yaml.j2", "src/files/crds.yaml.j2"]
-
-SSL_CONFIG_FILE = "/files/ssl.conf.j2"
-
 
 class KubeflowProfilesOperator(CharmBase):
     _stored = StoredState()
@@ -61,14 +58,13 @@ class KubeflowProfilesOperator(CharmBase):
         self._lightkube_field_manager = "lightkube"
         self._k8s_resource_handler = None
 
-        # generate certs
-        # self._stored.set_default(**self._gen_certs())
+        self.framework.observe(self.on.install, self._on_install)
+        self.framework.observe(self.on.config_changed, self._on_config_changed)
+        self.framework.observe(self.on.config_changed, self.service_patcher._patch)
 
         for event in [
-            self.on.install,
             self.on.leader_elected,
             self.on.upgrade_charm,
-            self.on.config_changed,
             self.on["kubeflow-profiles"].relation_changed,
         ]:
             self.framework.observe(event, self.main)
@@ -88,6 +84,14 @@ class KubeflowProfilesOperator(CharmBase):
         return self._kfam_container
 
     @property
+    def _context(self):
+        context = {
+            "app_name": self.model.app.name,
+            "model_name": self.model.name,
+        }
+        return context
+
+    @property
     def k8s_resource_handler(self):
         if not self._k8s_resource_handler:
             self._k8s_resource_handler = KRH(
@@ -102,47 +106,6 @@ class KubeflowProfilesOperator(CharmBase):
     @k8s_resource_handler.setter
     def k8s_resource_handler(self, handler: KRH):
         self._k8s_resource_handler = handler
-
-    def _deploy_k8s_resources(self):
-        try:
-            self.unit.status = MaintenanceStatus("Creating K8S resources")
-            self.k8s_resource_handler.apply()
-
-        except ApiError:
-            raise ErrorWithStatus("K8S resources creation failed", BlockedStatus)
-        self.model.unit.status = MaintenanceStatus("K8S resources created")
-
-    def _on_install(self, _):
-        """Perform installation only actions."""
-        self._check_container_connection(self.profiles_container)
-        self._check_container_connection(self.kfam_container)
-        # self._upload_certs_to_container()
-
-        # proceed with other actions
-        self.main(_)
-
-    @property
-    def _context(self):
-        context = {"app_name": self.model.app.name, "namespace": self.model.name}
-        return context
-
-    def _upload_certs_to_container(self):
-        """Upload generated certs to container."""
-        self.container.push(
-            "/tmp/k8s-webhook-server/serving-certs/tls.key",
-            self._stored.key,
-            make_dirs=True,
-        )
-        self.container.push(
-            "/tmp/k8s-webhook-server/serving-certs/tls.crt",
-            self._stored.cert,
-            make_dirs=True,
-        )
-        self.container.push(
-            "/tmp/k8s-webhook-server/serving-certs/ca.crt",
-            self._stored.ca,
-            make_dirs=True,
-        )
 
     @property
     def _profiles_pebble_layer(self) -> Layer:
@@ -212,6 +175,102 @@ class KubeflowProfilesOperator(CharmBase):
             }
         )
 
+    def _deploy_k8s_resources(self):
+        try:
+            self.unit.status = MaintenanceStatus("Creating K8S resources")
+            self.k8s_resource_handler.apply()
+
+        except ApiError:
+            raise ErrorWithStatus("K8S resources creation failed", BlockedStatus)
+        self.model.unit.status = MaintenanceStatus("K8S resources created")
+
+    def _update_profiles_layer(self) -> None:
+        """Updates the Pebble configuration layer if changed."""
+        if not self.profiles_container.can_connect():
+            raise ErrorWithStatus("Waiting for pod startup to complete", MaintenanceStatus)
+
+        current_layer = self.profiles_container.get_plan()
+
+        if current_layer.services != self._profiles_pebble_layer.services:
+            with open(
+                "src/files/namespace-labels.yaml", encoding="utf-8"
+            ) as labels_file:
+                labels = labels_file.read()
+                self.profiles_container.push(
+                    "/etc/profile-controller/namespace-labels.yaml",
+                    labels,
+                    make_dirs=True,
+                )
+            self.profiles_container.add_layer(self._profiles_container_name, self._profiles_pebble_layer, combine=True)
+            try:
+                self.log.info("Pebble plan updated with new configuration, replanning")
+                self.profiles_container.replan()
+            except ChangeError:
+                self.log.error(traceback.format_exc())
+                raise ErrorWithStatus("Failed to replan", BlockedStatus)
+    
+    def _update_profiles_container(self, event) -> None:
+        """Updates the Profiles Pebble configuration layer if changed."""
+
+        self.unit.status = MaintenanceStatus("Configuring Profiles layer")
+        self._update_profiles_layer()
+
+        #TODO determine status checking if kfam is also up
+        self.unit.status = ActiveStatus()
+
+    def _update_kfam_container(self, event) -> None:
+        """Updates the kfam Pebble configuration layer if changed."""
+        if not self.profiles_container.can_connect():
+            self.unit.status = WaitingStatus("Waiting to connect to kfam container")
+            event.defer()
+            return
+
+        self.unit.status = MaintenanceStatus("Configuring kfam layer")
+
+        update_layer(
+                self._kfam_container_name,
+                self.kfam_container,
+                self._kfam_pebble_layer,
+                self.log,
+            )
+
+        #TODO determine status checking if profiles is also up
+        self.unit.status = ActiveStatus()
+
+    def _on_install(self, event):
+        """Perform installation only actions."""
+        
+        
+        self._update_profiles_container(event)
+        self._update_kfam_container(event)
+
+        try:
+            self._deploy_k8s_resources()
+            interfaces = self._get_interfaces()
+        except (ApiError, ErrorWithStatus, CheckFailed) as e:
+            if isinstance(e, ApiError):
+                self.log.error(f"Applying resources failed with ApiError status code {e.status.code}")
+                self.unit.status = BlockedStatus(f"ApiError: {e.status.code}")
+            else:
+                self.log.info(e.msg)
+                self.unit.status = e.status
+        else:
+            self.unit.status = ActiveStatus()
+
+    def _on_config_changed(self,event):
+        self._update_profiles_container(event)
+        self._update_kfam_container(event)
+
+        try:
+            interfaces = self._get_interfaces()
+        except CheckFailed as error:
+            self.model.unit.status = error.status
+            return
+
+        self._send_info(event, interfaces)
+
+
+
     def _on_kubeflow_profiles_ready(self, event):
         """Define and start a workload using the Pebble API.
         Learn more about Pebble layers at https://github.com/canonical/pebble
@@ -227,12 +286,7 @@ class KubeflowProfilesOperator(CharmBase):
                     make_dirs=True,
                 )
 
-            update_layer(
-                self._profiles_container_name,
-                self.profiles_container,
-                self._profiles_pebble_layer,
-                self.log,
-            )
+            self._update_profiles_container(event)
 
         except ErrorWithStatus as e:
             self.model.unit.status = e.status
@@ -241,19 +295,14 @@ class KubeflowProfilesOperator(CharmBase):
             else:
                 self.log.info(str(e.msg))
 
-        self.unit.status = ActiveStatus()
+        #self.unit.status = ActiveStatus()
 
     def _on_kfam_ready(self, event):
         """Define and start a workload using the Pebble API.
         Learn more about Pebble layers at https://github.com/canonical/pebble
         """
         try:
-            update_layer(
-                self._kfam_container_name,
-                self.kfam_container,
-                self._kfam_pebble_layer,
-                self.log,
-            )
+            self._update_kfam_container(event)
 
         except ErrorWithStatus as e:
             self.model.unit.status = e.status
@@ -262,7 +311,7 @@ class KubeflowProfilesOperator(CharmBase):
             else:
                 self.log.info(str(e.msg))
 
-        self.unit.status = ActiveStatus()
+        #self.unit.status = ActiveStatus()
 
     def _send_info(self, event, interfaces):
         if interfaces["kubeflow-profiles"]:
@@ -292,107 +341,6 @@ class KubeflowProfilesOperator(CharmBase):
         except NoCompatibleVersions as err:
             raise CheckFailed(err, BlockedStatus)
         return interfaces
-
-    def _gen_certs(self):
-        """Generate certificates."""
-        # generate SSL configuration based on template
-
-        try:
-            ssl_conf_template = open(SSL_CONFIG_FILE)
-            ssl_conf = ssl_conf_template.read()
-        except ApiError as error:
-            self.log.warning(f"Failed to open SSL config file: {error}")
-
-        ssl_conf = ssl_conf.replace("{{ namespace }}", str(self._namespace))
-        ssl_conf = ssl_conf.replace("{{ service_name }}", str(self._name))
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            Path(tmp_dir + "/profiles-cert-gen-ssl.conf").write_text(ssl_conf)
-
-            # execute OpenSSL commands
-            check_call(
-                [
-                    "openssl",
-                    "genrsa",
-                    "-out",
-                    tmp_dir + "/profiles-cert-gen-ca.key",
-                    "2048",
-                ]
-            )
-            check_call(
-                [
-                    "openssl",
-                    "genrsa",
-                    "-out",
-                    tmp_dir + "/profiles-cert-gen-server.key",
-                    "2048",
-                ]
-            )
-            check_call(
-                [
-                    "openssl",
-                    "req",
-                    "-x509",
-                    "-new",
-                    "-sha256",
-                    "-nodes",
-                    "-days",
-                    "3650",
-                    "-key",
-                    tmp_dir + "/profiles-cert-gen-ca.key",
-                    "-subj",
-                    "/CN=127.0.0.1",
-                    "-out",
-                    tmp_dir + "/profiles-cert-gen-ca.crt",
-                ]
-            )
-            check_call(
-                [
-                    "openssl",
-                    "req",
-                    "-new",
-                    "-sha256",
-                    "-key",
-                    tmp_dir + "/profiles-cert-gen-server.key",
-                    "-out",
-                    tmp_dir + "/profiles-cert-gen-server.csr",
-                    "-config",
-                    tmp_dir + "/profiles-cert-gen-ssl.conf",
-                ]
-            )
-            check_call(
-                [
-                    "openssl",
-                    "x509",
-                    "-req",
-                    "-sha256",
-                    "-in",
-                    tmp_dir + "/profiles-cert-gen-server.csr",
-                    "-CA",
-                    tmp_dir + "/profiles-cert-gen-ca.crt",
-                    "-CAkey",
-                    tmp_dir + "/profiles-cert-gen-ca.key",
-                    "-CAcreateserial",
-                    "-out",
-                    tmp_dir + "/profiles-cert-gen-cert.pem",
-                    "-days",
-                    "365",
-                    "-extensions",
-                    "v3_ext",
-                    "-extfile",
-                    tmp_dir + "/profiles-cert-gen-ssl.conf",
-                ]
-            )
-
-            ret_certs = {
-                "cert": Path(tmp_dir + "/profiles-cert-gen-cert.pem").read_text(),
-                "key": Path(tmp_dir + "/profiles-cert-gen-server.key").read_text(),
-                "ca": Path(tmp_dir + "/profiles-cert-gen-ca.crt").read_text(),
-            }
-
-            # cleanup temporary files
-            check_call(["rm", "-f", tmp_dir + "/profiles-cert-gen-*"])
-
-        return ret_certs
 
     def main(self, event):
         try:
