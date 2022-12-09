@@ -28,7 +28,7 @@ async def test_build_and_deploy(ops_test):
         "profile-image": profile_image_path,
     }
 
-    await ops_test.model.deploy(my_charm, resources=resources)
+    await ops_test.model.deploy(my_charm, resources=resources, trust=True)
 
     await ops_test.model.block_until(
         lambda: all(

@@ -107,7 +107,7 @@ def test_kfam_pebble_layer(
     pebble_plan_info = pebble_plan.to_dict()
     assert (
         pebble_plan_info["services"]["kubeflow-kfam"]["command"]
-        == "/access-management "
+        == "/access-management "  # noqa: W503
         "-cluster-admin "
         "admin "
         "-userid-header "

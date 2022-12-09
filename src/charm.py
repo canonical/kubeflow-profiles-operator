@@ -14,6 +14,7 @@ from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServ
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH
 from charmed_kubeflow_chisme.pebble import update_layer
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
+from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from lightkube.models.core_v1 import ServicePort
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube import ApiError
@@ -323,6 +324,16 @@ class KubeflowProfilesOperator(CharmBase):
                 self.log.info(str(e.msg))
 
         # self.unit.status = ActiveStatus()
+
+    def _on_remove(self, event):
+        self.unit.status = MaintenanceStatus("Removing k8s resources")
+        manifests = self.k8s_resource_handler.render_manifests()
+        try:
+            delete_many(self.k8s_resource_handler.lightkube_client, manifests)
+        except ApiError as e:
+            self.log.warning(f"Failed to delete resources: {manifests} with: {e}")
+            raise e
+        self.unit.status = MaintenanceStatus("K8s resources removed")
 
     def _send_info(self, event, interfaces):
         if interfaces["kubeflow-profiles"]:
