@@ -4,8 +4,6 @@
 
 import logging
 import traceback
-from pathlib import Path
-from subprocess import check_call
 
 from ops.charm import CharmBase
 from ops.main import main
@@ -27,6 +25,7 @@ from serialized_data_interface import (
 )
 
 K8S_RESOURCE_FILES = ["src/files/auth_manifests.yaml.j2", "src/files/crds.yaml.j2"]
+
 
 class KubeflowProfilesOperator(CharmBase):
     _stored = StoredState()
@@ -129,13 +128,9 @@ class KubeflowProfilesOperator(CharmBase):
                     }
                 },
                 #         "checks": {
-                #             "kubeflow-profiles-ready": {
-                #                 "override": "replace",
-                #                 "http": {"url": "http://localhost:8080/metrics/health/ready"},
-                #                 },
                 #             "kubeflow-profiles-alive": {
                 #                 "override": "replace",
-                #                 "http": {"url": "http://localhost:8080/metrics/health/alive"},
+                #                 "http": {"url": "http://localhost:8080/metrics"},
                 #     },
                 # },
             }
@@ -163,13 +158,9 @@ class KubeflowProfilesOperator(CharmBase):
                     }
                 },
                 #         "checks": {
-                #             "kubeflow-kfam-ready": {
-                #                 "override": "replace",
-                #                 "http": {"url": "http://localhost:8081/metrics/health/ready"},
-                #                 },
                 #             "kubeflow-kfam-alive": {
                 #                 "override": "replace",
-                #                 "http": {"url": "http://localhost:8081/metrics/health/alive"},
+                #                 "http": {"url": "http://localhost:8081/metrics"},
                 #     },
                 # },
             }
@@ -187,7 +178,9 @@ class KubeflowProfilesOperator(CharmBase):
     def _update_profiles_layer(self) -> None:
         """Updates the Pebble configuration layer if changed."""
         if not self.profiles_container.can_connect():
-            raise ErrorWithStatus("Waiting for pod startup to complete", MaintenanceStatus)
+            raise ErrorWithStatus(
+                "Waiting for pod startup to complete", MaintenanceStatus
+            )
 
         current_layer = self.profiles_container.get_plan()
 
@@ -201,14 +194,16 @@ class KubeflowProfilesOperator(CharmBase):
                     labels,
                     make_dirs=True,
                 )
-            self.profiles_container.add_layer(self._profiles_container_name, self._profiles_pebble_layer, combine=True)
+            self.profiles_container.add_layer(
+                self._profiles_container_name, self._profiles_pebble_layer, combine=True
+            )
             try:
                 self.log.info("Pebble plan updated with new configuration, replanning")
                 self.profiles_container.replan()
             except ChangeError:
                 self.log.error(traceback.format_exc())
                 raise ErrorWithStatus("Failed to replan", BlockedStatus)
-    
+
     def _update_profiles_container(self, event) -> None:
         """Updates the Profiles Pebble configuration layer if changed."""
         if not self.profiles_container.can_connect():
@@ -216,10 +211,16 @@ class KubeflowProfilesOperator(CharmBase):
             event.defer()
             return
 
+        try:
+            self._check_leader()
+        except ErrorWithStatus as error:
+            self.model.unit.status = error.status
+            return
+
         self.unit.status = MaintenanceStatus("Configuring Profiles layer")
         self._update_profiles_layer()
 
-        #TODO determine status checking if kfam is also up
+        # TODO determine status checking if kfam is also up
         self.unit.status = ActiveStatus()
 
     def _update_kfam_container(self, event) -> None:
@@ -229,31 +230,39 @@ class KubeflowProfilesOperator(CharmBase):
             event.defer()
             return
 
+        try:
+            self._check_leader()
+        except ErrorWithStatus as error:
+            self.model.unit.status = error.status
+            return
+
         self.unit.status = MaintenanceStatus("Configuring kfam layer")
 
         update_layer(
-                self._kfam_container_name,
-                self.kfam_container,
-                self._kfam_pebble_layer,
-                self.log,
-            )
+            self._kfam_container_name,
+            self.kfam_container,
+            self._kfam_pebble_layer,
+            self.log,
+        )
 
-        #TODO determine status checking if profiles is also up
+        # TODO determine status checking if profiles is also up
         self.unit.status = ActiveStatus()
 
     def _on_install(self, event):
         """Perform installation only actions."""
-        
-        
+
         self._update_profiles_container(event)
         self._update_kfam_container(event)
 
         try:
             self._deploy_k8s_resources()
             interfaces = self._get_interfaces()
+            self._send_info(event, interfaces)
         except (ApiError, ErrorWithStatus, CheckFailed) as e:
             if isinstance(e, ApiError):
-                self.log.error(f"Applying resources failed with ApiError status code {e.status.code}")
+                self.log.error(
+                    f"Applying resources failed with ApiError status code {e.status.code}"
+                )
                 self.unit.status = BlockedStatus(f"ApiError: {e.status.code}")
             else:
                 self.log.info(e.msg)
@@ -261,7 +270,7 @@ class KubeflowProfilesOperator(CharmBase):
         else:
             self.unit.status = ActiveStatus()
 
-    def _on_config_changed(self,event):
+    def _on_config_changed(self, event):
         self._update_profiles_container(event)
         self._update_kfam_container(event)
 
@@ -272,8 +281,6 @@ class KubeflowProfilesOperator(CharmBase):
             return
 
         self._send_info(event, interfaces)
-
-
 
     def _on_kubeflow_profiles_ready(self, event):
         """Define and start a workload using the Pebble API.
@@ -299,7 +306,7 @@ class KubeflowProfilesOperator(CharmBase):
             else:
                 self.log.info(str(e.msg))
 
-        #self.unit.status = ActiveStatus()
+        # self.unit.status = ActiveStatus()
 
     def _on_kfam_ready(self, event):
         """Define and start a workload using the Pebble API.
@@ -315,7 +322,7 @@ class KubeflowProfilesOperator(CharmBase):
             else:
                 self.log.info(str(e.msg))
 
-        #self.unit.status = ActiveStatus()
+        # self.unit.status = ActiveStatus()
 
     def _send_info(self, event, interfaces):
         if interfaces["kubeflow-profiles"]:
@@ -329,7 +336,7 @@ class KubeflowProfilesOperator(CharmBase):
     def _check_leader(self):
         if not self.unit.is_leader():
             # We can't do anything useful when not the leader, so do nothing.
-            self.logger.info("Not a leader, skipping setup")
+            self.log.info("Not a leader, skipping setup")
             raise ErrorWithStatus("Waiting for leadership", WaitingStatus)
 
     def _check_container_connection(self, container):
