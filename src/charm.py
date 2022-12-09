@@ -61,6 +61,7 @@ class KubeflowProfilesOperator(CharmBase):
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.config_changed, self.service_patcher._patch)
+        self.framework.observe(self.on.remove, self._on_remove)
 
         for event in [
             self.on.leader_elected,
@@ -131,7 +132,9 @@ class KubeflowProfilesOperator(CharmBase):
                 #         "checks": {
                 #             "kubeflow-profiles-alive": {
                 #                 "override": "replace",
-                #                 "http": {"url": "http://localhost:8080/metrics"},
+                #                 "http": {
+                #                       "url": "http://localhost:8080/metrics/v1/health?level=alive"
+                #                          },
                 #     },
                 # },
             }
@@ -161,7 +164,9 @@ class KubeflowProfilesOperator(CharmBase):
                 #         "checks": {
                 #             "kubeflow-kfam-alive": {
                 #                 "override": "replace",
-                #                 "http": {"url": "http://localhost:8081/metrics"},
+                #                 "http": {
+                #                       "url": "http://localhost:8081/metrics/v1/health?level=alive
+                #                          },
                 #     },
                 # },
             }
@@ -307,8 +312,6 @@ class KubeflowProfilesOperator(CharmBase):
             else:
                 self.log.info(str(e.msg))
 
-        # self.unit.status = ActiveStatus()
-
     def _on_kfam_ready(self, event):
         """Define and start a workload using the Pebble API.
         Learn more about Pebble layers at https://github.com/canonical/pebble
@@ -322,8 +325,6 @@ class KubeflowProfilesOperator(CharmBase):
                 self.log.error(str(e.msg))
             else:
                 self.log.info(str(e.msg))
-
-        # self.unit.status = ActiveStatus()
 
     def _on_remove(self, event):
         self.unit.status = MaintenanceStatus("Removing k8s resources")
