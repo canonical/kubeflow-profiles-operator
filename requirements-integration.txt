@@ -122,7 +122,7 @@ ops==1.5.4
     # via
     #   -r ./requirements.txt
     #   serialized-data-interface
-packaging==21.3
+packaging==22.0
     # via pytest
 paramiko==2.12.0
     # via juju
