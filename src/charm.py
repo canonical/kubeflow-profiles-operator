@@ -129,14 +129,13 @@ class KubeflowProfilesOperator(CharmBase):
                         "startup": "enabled",
                     }
                 },
-                #         "checks": {
-                #             "kubeflow-profiles-alive": {
-                #                 "override": "replace",
-                #                 "http": {
-                #                       "url": "http://localhost:8080/metrics/v1/health?level=alive"
-                #                          },
-                #     },
-                # },
+                "checks": {
+                    "kubeflow-profiles-get": {
+                        "override": "replace",
+                        "period": "30s",
+                        "http": {"url": "http://localhost:8080/metrics"},
+                    },
+                },
             }
         )
 
@@ -161,14 +160,13 @@ class KubeflowProfilesOperator(CharmBase):
                         "startup": "enabled",
                     }
                 },
-                #         "checks": {
-                #             "kubeflow-kfam-alive": {
-                #                 "override": "replace",
-                #                 "http": {
-                #                       "url": "http://localhost:8081/metrics/v1/health?level=alive
-                #                          },
-                #     },
-                # },
+                "checks": {
+                    "kubeflow-kfam-get": {
+                        "override": "replace",
+                        "period": "30s",
+                        "http": {"url": "http://localhost:8081/metrics"},
+                    },
+                },
             }
         )
 
