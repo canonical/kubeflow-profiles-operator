@@ -3,20 +3,15 @@
 # See LICENSE file for licensing details.
 
 import logging
-import yaml
 from pathlib import Path
 
-from ops.charm import CharmBase
-from ops.main import main
-from ops.model import ActiveStatus, WaitingStatus, BlockedStatus
-from ops.framework import StoredState
-
+import yaml
 from oci_image import OCIImageResource, OCIImageResourceError
-from serialized_data_interface import (
-    NoCompatibleVersions,
-    NoVersionsListed,
-    get_interfaces,
-)
+from ops.charm import CharmBase
+from ops.framework import StoredState
+from ops.main import main
+from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
 
 class Operator(CharmBase):
@@ -131,9 +126,7 @@ class Operator(CharmBase):
                             "-userid-prefix",
                             "",
                         ],
-                        "ports": [
-                            {"name": "http", "containerPort": self.model.config["port"]}
-                        ],
+                        "ports": [{"name": "http", "containerPort": self.model.config["port"]}],
                         "kubernetes": {
                             "livenessProbe": {
                                 "httpGet": {
@@ -151,9 +144,7 @@ class Operator(CharmBase):
                 "kubernetesResources": {
                     "customResourceDefinitions": [
                         {"name": crd["metadata"]["name"], "spec": crd["spec"]}
-                        for crd in yaml.safe_load_all(
-                            Path("files/crds.yaml").read_text()
-                        )
+                        for crd in yaml.safe_load_all(Path("files/crds.yaml").read_text())
                     ],
                 },
                 "configMaps": {
