@@ -61,8 +61,6 @@ def test_no_relation(
         },
     )
     harness.begin_with_initial_hooks()
-    harness.container_pebble_ready("kubeflow-profiles")
-    harness.container_pebble_ready("kubeflow-kfam")
     assert harness.charm.model.unit.status == ActiveStatus("")
 
 

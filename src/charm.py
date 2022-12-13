@@ -58,15 +58,15 @@ class KubeflowProfilesOperator(CharmBase):
         self._lightkube_field_manager = "lightkube"
         self._k8s_resource_handler = None
 
-        self.framework.observe(self.on.install, self._on_install)
-        self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.config_changed, self.service_patcher._patch)
         self.framework.observe(self.on.remove, self._on_remove)
 
         for event in [
+            self.on.install,
             self.on.leader_elected,
             self.on.upgrade_charm,
             self.on["kubeflow-profiles"].relation_changed,
+            self.on.config_changed,
         ]:
             self.framework.observe(event, self.main)
         self.framework.observe(
@@ -217,15 +217,11 @@ class KubeflowProfilesOperator(CharmBase):
 
         try:
             self._check_leader()
+            self.unit.status = MaintenanceStatus("Configuring Profiles layer")
+            self._update_profiles_layer()
         except ErrorWithStatus as error:
-            self.model.unit.status = error.status
-            return
-
-        self.unit.status = MaintenanceStatus("Configuring Profiles layer")
-        self._update_profiles_layer()
-
-        # TODO determine status checking if kfam is also up
-        self.unit.status = ActiveStatus()
+            raise error
+        self.unit.status = MaintenanceStatus("Profiles layer configured")
 
     def _update_kfam_container(self, event) -> None:
         """Updates the kfam Pebble configuration layer if changed."""
@@ -236,71 +232,22 @@ class KubeflowProfilesOperator(CharmBase):
 
         try:
             self._check_leader()
+            self.unit.status = MaintenanceStatus("Configuring kfam layer")
+            update_layer(
+                self._kfam_container_name,
+                self.kfam_container,
+                self._kfam_pebble_layer,
+                self.log,
+            )
         except ErrorWithStatus as error:
-            self.model.unit.status = error.status
-            return
-
-        self.unit.status = MaintenanceStatus("Configuring kfam layer")
-
-        update_layer(
-            self._kfam_container_name,
-            self.kfam_container,
-            self._kfam_pebble_layer,
-            self.log,
-        )
-
-        # TODO determine status checking if profiles is also up
-        self.unit.status = ActiveStatus()
-
-    def _on_install(self, event):
-        """Perform installation only actions."""
-
-        self._update_profiles_container(event)
-        self._update_kfam_container(event)
-
-        try:
-            self._deploy_k8s_resources()
-            interfaces = self._get_interfaces()
-            self._send_info(event, interfaces)
-        except (ApiError, ErrorWithStatus, CheckFailed) as e:
-            if isinstance(e, ApiError):
-                self.log.error(
-                    f"Applying resources failed with ApiError status code {e.status.code}"
-                )
-                self.unit.status = BlockedStatus(f"ApiError: {e.status.code}")
-            else:
-                self.log.info(e.msg)
-                self.unit.status = e.status
-        else:
-            self.unit.status = ActiveStatus()
-
-    def _on_config_changed(self, event):
-        self._update_profiles_container(event)
-        self._update_kfam_container(event)
-
-        try:
-            interfaces = self._get_interfaces()
-        except CheckFailed as error:
-            self.model.unit.status = error.status
-            return
-
-        self._send_info(event, interfaces)
+            raise error
+        self.unit.status = MaintenanceStatus("kfam layer configured")
 
     def _on_kubeflow_profiles_ready(self, event):
         """Define and start a workload using the Pebble API.
         Learn more about Pebble layers at https://github.com/canonical/pebble
         """
         try:
-            with open(
-                "src/files/namespace-labels.yaml", encoding="utf-8"
-            ) as labels_file:
-                labels = labels_file.read()
-                self.profiles_container.push(
-                    "/etc/profile-controller/namespace-labels.yaml",
-                    labels,
-                    make_dirs=True,
-                )
-
             self._update_profiles_container(event)
 
         except ErrorWithStatus as e:
@@ -365,11 +312,9 @@ class KubeflowProfilesOperator(CharmBase):
 
     def main(self, event):
         try:
-            self._check_container_connection(self.profiles_container)
-            self._check_container_connection(self.kfam_container)
-            self._check_leader()
+            self._update_profiles_container(event)
+            self._update_kfam_container(event)
             self._deploy_k8s_resources()
-
             interfaces = self._get_interfaces()
 
         except ErrorWithStatus as error:
