@@ -22,9 +22,7 @@ def test_profiles_container_running(
     harness.set_leader(True)
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-profiles")
-    assert harness.charm.profiles_container.get_service(
-        "kubeflow-profiles"
-    ).is_running()
+    assert harness.charm.profiles_container.get_service("kubeflow-profiles").is_running()
 
 
 def test_kfam_container_running(

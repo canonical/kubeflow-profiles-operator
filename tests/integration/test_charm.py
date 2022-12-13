@@ -3,15 +3,15 @@
 
 import logging
 from pathlib import Path
-import yaml
 
 import lightkube
+import pytest
+import yaml
 from lightkube import codecs
 from lightkube.generic_resource import create_global_resource
 from lightkube.resources.core_v1 import Namespace
 from lightkube.types import PatchType
-import pytest
-from tenacity import retry, wait_exponential, stop_after_delay
+from tenacity import retry, stop_after_delay, wait_exponential
 
 log = logging.getLogger(__name__)
 
@@ -56,9 +56,7 @@ async def test_profile_creation(lightkube_client, profile):
 @pytest.fixture(scope="session")
 def lightkube_client() -> lightkube.Client:
     client = lightkube.Client()
-    create_global_resource(
-        group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
-    )
+    create_global_resource(group="kubeflow.org", version="v1", kind="Profile", plural="profiles")
     return client
 
 

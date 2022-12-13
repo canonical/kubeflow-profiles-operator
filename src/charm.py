@@ -46,9 +46,7 @@ class KubeflowProfilesOperator(CharmBase):
         )
 
         self._profiles_container_name = "kubeflow-profiles"
-        self._profiles_container = self.unit.get_container(
-            self._profiles_container_name
-        )
+        self._profiles_container = self.unit.get_container(self._profiles_container_name)
 
         self._kfam_container_name = "kubeflow-kfam"
         self._kfam_container = self.unit.get_container(self._kfam_container_name)
@@ -182,16 +180,12 @@ class KubeflowProfilesOperator(CharmBase):
     def _update_profiles_layer(self) -> None:
         """Updates the Pebble configuration layer if changed."""
         if not self.profiles_container.can_connect():
-            raise ErrorWithStatus(
-                "Waiting for pod startup to complete", MaintenanceStatus
-            )
+            raise ErrorWithStatus("Waiting for pod startup to complete", MaintenanceStatus)
 
         current_layer = self.profiles_container.get_plan()
 
         if current_layer.services != self._profiles_pebble_layer.services:
-            with open(
-                "src/files/namespace-labels.yaml", encoding="utf-8"
-            ) as labels_file:
+            with open("src/files/namespace-labels.yaml", encoding="utf-8") as labels_file:
                 labels = labels_file.read()
                 self.profiles_container.push(
                     "/etc/profile-controller/namespace-labels.yaml",
