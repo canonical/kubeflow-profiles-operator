@@ -5,25 +5,20 @@
 import logging
 import traceback
 
-from ops.charm import CharmBase
-from ops.main import main
-from ops.pebble import Layer, ChangeError
-from ops.model import ActiveStatus, WaitingStatus, BlockedStatus, MaintenanceStatus
-from ops.framework import StoredState
-from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
-from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH
-from charmed_kubeflow_chisme.pebble import update_layer
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
+from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
-from lightkube.models.core_v1 import ServicePort
-from lightkube.generic_resource import load_in_cluster_generic_resources
+from charmed_kubeflow_chisme.pebble import update_layer
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube import ApiError
-
-from serialized_data_interface import (
-    NoCompatibleVersions,
-    NoVersionsListed,
-    get_interfaces,
-)
+from lightkube.generic_resource import load_in_cluster_generic_resources
+from lightkube.models.core_v1 import ServicePort
+from ops.charm import CharmBase
+from ops.framework import StoredState
+from ops.main import main
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.pebble import ChangeError, Layer
+from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
 K8S_RESOURCE_FILES = ["src/files/auth_manifests.yaml.j2", "src/files/crds.yaml.j2"]
 

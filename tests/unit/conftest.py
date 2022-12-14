@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from ops.testing import Harness
 
-from charm import KubernetesServicePatch, KubeflowProfilesOperator
+from charm import KubeflowProfilesOperator, KubernetesServicePatch
 
 
 @pytest.fixture
