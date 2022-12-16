@@ -2,6 +2,8 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+"""A Juju Charm for Kubeflow Profiles Operator."""
+
 import logging
 import traceback
 
@@ -20,10 +22,12 @@ from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingSta
 from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
-K8S_RESOURCE_FILES = ["src/files/auth_manifests.yaml.j2", "src/files/crds.yaml.j2"]
+K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
 
 
 class KubeflowProfilesOperator(CharmBase):
+    """A Juju Charm for Kubeflow Profiles Operator."""
+
     _stored = StoredState()
 
     def __init__(self, *args):
@@ -79,6 +83,7 @@ class KubeflowProfilesOperator(CharmBase):
 
     @property
     def _context(self):
+        """ "Context to be used for updating K8S resources"""
         context = {
             "app_name": self.model.app.name,
             "model_name": self.model.name,
@@ -87,6 +92,7 @@ class KubeflowProfilesOperator(CharmBase):
 
     @property
     def k8s_resource_handler(self):
+        """Update K8S with K8S resources."""
         if not self._k8s_resource_handler:
             self._k8s_resource_handler = KRH(
                 field_manager=self._lightkube_field_manager,
@@ -180,7 +186,7 @@ class KubeflowProfilesOperator(CharmBase):
         current_layer = self.profiles_container.get_plan()
 
         if current_layer.services != self._profiles_pebble_layer.services:
-            with open("src/files/namespace-labels.yaml", encoding="utf-8") as labels_file:
+            with open("src/templates/namespace-labels.yaml", encoding="utf-8") as labels_file:
                 labels = labels_file.read()
                 self.profiles_container.push(
                     "/etc/profile-controller/namespace-labels.yaml",

@@ -8,6 +8,7 @@ def test_not_leader(
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
+    """Test not a leader scenario"""
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-profiles")
     harness.container_pebble_ready("kubeflow-kfam")
@@ -19,6 +20,7 @@ def test_profiles_container_running(
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
+    """Test that kubeflow-profiles container is running"""
     harness.set_leader(True)
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-profiles")
@@ -30,6 +32,7 @@ def test_kfam_container_running(
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
+    """Test that kubeflow-kfam container is running"""
     harness.set_leader(True)
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-kfam")
@@ -41,6 +44,7 @@ def test_no_relation(
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
+    """Test no relation scenario"""
     harness.set_leader(True)
     harness.add_oci_resource(
         "profile-image",
@@ -67,7 +71,7 @@ def test_profiles_pebble_layer(
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
-    """Test creation of Pebble layer. Only testing specific items."""
+    """Test creation of Profiles Pebble layer. Only testing specific items."""
     harness.set_leader(True)
     harness.set_model_name("test_kubeflow")
     harness.begin_with_initial_hooks()
@@ -92,7 +96,7 @@ def test_kfam_pebble_layer(
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
-    """Test creation of Pebble layer. Only testing specific items."""
+    """Test creation of kfam Pebble layer. Only testing specific items."""
     harness.set_leader(True)
     harness.set_model_name("test_kubeflow")
     harness.begin_with_initial_hooks()
