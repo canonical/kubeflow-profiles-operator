@@ -3,23 +3,27 @@
 
 import logging
 from pathlib import Path
+import yaml
+import requests
 
 import lightkube
 import pytest
-import yaml
+import aiohttp
 from lightkube import codecs
 from lightkube.generic_resource import create_global_resource
-from lightkube.resources.core_v1 import Namespace
+from lightkube.resources.core_v1 import Namespace, Pod
 from lightkube.types import PatchType
 from tenacity import retry, stop_after_delay, wait_exponential
 
 log = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
-
+CHARM_NAME = METADATA["name"]
 
 @pytest.mark.abort_on_fail
+@pytest.mark.skip_if_deployed
 async def test_build_and_deploy(ops_test):
+    """Build the charm-under-test and deploy it."""
     my_charm = await ops_test.build_charm(".")
     kfam_image_path = METADATA["resources"]["kfam-image"]["upstream-source"]
     profile_image_path = METADATA["resources"]["profile-image"]["upstream-source"]
@@ -41,8 +45,8 @@ async def test_build_and_deploy(ops_test):
 
 
 async def test_status(ops_test):
-    charm_name = METADATA["name"]
-    assert ops_test.model.applications[charm_name].units[0].workload_status == "active"
+    """"Assert on the unit status."""
+    assert ops_test.model.applications[CHARM_NAME].units[0].workload_status == "active"
 
 
 # Parameterize to two different profiles?
@@ -51,6 +55,21 @@ async def test_profile_creation(lightkube_client, profile):
     profile_name = profile
     validate_profile_namespace(lightkube_client, profile_name)
 
+async def test_health_check_profiles(ops_test):
+    """"Test whether the profiles health check endpoint responds with 200"""
+    status = await ops_test.model.get_status()
+    profiles_units = status["applications"]["kubeflow-profiles"]["units"]
+    profiles_url = profiles_units["kubeflow-profiles/0"]["address"]
+    result = requests.get(f"http://{profiles_url}:8080/metrics")
+    assert result.status_code==200
+
+async def test_health_check_kfam(ops_test):
+    """"Test whether the kfam health check endpoint responds with 200"""
+    status = await ops_test.model.get_status()
+    profiles_units = status["applications"]["kubeflow-profiles"]["units"]
+    profiles_url = profiles_units["kubeflow-profiles/0"]["address"]
+    result = requests.get(f"http://{profiles_url}:8081/metrics")
+    assert result.status_code==200
 
 # Helpers
 @pytest.fixture(scope="session")
