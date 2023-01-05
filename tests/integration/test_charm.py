@@ -3,11 +3,11 @@
 
 import logging
 from pathlib import Path
-import yaml
-import requests
 
 import lightkube
 import pytest
+import requests
+import yaml
 from lightkube import codecs
 from lightkube.generic_resource import create_global_resource
 from lightkube.resources.core_v1 import Namespace
