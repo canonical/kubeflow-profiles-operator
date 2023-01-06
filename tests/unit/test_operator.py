@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 """Unit tests. Harness and Mocks are defined in conftest.py"""
 from ops.model import ActiveStatus, WaitingStatus
-from .test_operator_fixtures import (
+from .test_operator_fixtures import (   # noqa F401
     harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
@@ -10,9 +10,9 @@ from .test_operator_fixtures import (
 
 
 def test_not_leader(
-    harness,
-    mocked_kubernetes_service_patcher,
-    mocked_resource_handler,
+    harness,    # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,    # noqa F811
 ):
     """Test not a leader scenario"""
     harness.begin_with_initial_hooks()
@@ -22,9 +22,9 @@ def test_not_leader(
 
 
 def test_profiles_container_running(
-    harness,
-    mocked_kubernetes_service_patcher,
-    mocked_resource_handler,
+    harness,    # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,    # noqa F811
 ):
     """Test that kubeflow-profiles container is running"""
     harness.set_leader(True)
@@ -34,9 +34,9 @@ def test_profiles_container_running(
 
 
 def test_kfam_container_running(
-    harness,
-    mocked_kubernetes_service_patcher,
-    mocked_resource_handler,
+    harness,    # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,    # noqa F811
 ):
     """Test that kubeflow-kfam container is running"""
     harness.set_leader(True)
@@ -46,9 +46,9 @@ def test_kfam_container_running(
 
 
 def test_no_relation(
-    harness,
-    mocked_kubernetes_service_patcher,
-    mocked_resource_handler,
+    harness,    # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,    # noqa F811
 ):
     """Test no relation scenario"""
     harness.set_leader(True)
@@ -73,9 +73,9 @@ def test_no_relation(
 
 
 def test_profiles_pebble_layer(
-    harness,
-    mocked_kubernetes_service_patcher,
-    mocked_resource_handler,
+    harness,    # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,    # noqa F811
 ):
     """Test creation of Profiles Pebble layer. Only testing specific items."""
     harness.set_leader(True)
@@ -98,9 +98,9 @@ def test_profiles_pebble_layer(
 
 
 def test_kfam_pebble_layer(
-    harness,
-    mocked_kubernetes_service_patcher,
-    mocked_resource_handler,
+    harness,    # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,    # noqa F811
 ):
     """Test creation of kfam Pebble layer. Only testing specific items."""
     harness.set_leader(True)
