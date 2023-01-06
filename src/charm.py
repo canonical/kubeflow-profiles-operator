@@ -188,11 +188,11 @@ class KubeflowProfilesOperator(CharmBase):
         if current_layer.services != self._profiles_pebble_layer.services:
             with open("src/templates/namespace-labels.yaml", encoding="utf-8") as labels_file:
                 labels = labels_file.read()
-                self.profiles_container.push(
-                    "/etc/profile-controller/namespace-labels.yaml",
-                    labels,
-                    make_dirs=True,
-                )
+            self.profiles_container.push(
+                "/etc/profile-controller/namespace-labels.yaml",
+                labels,
+                make_dirs=True,
+            )
             self.profiles_container.add_layer(
                 self._profiles_container_name, self._profiles_pebble_layer, combine=True
             )

@@ -74,13 +74,6 @@ jobs:
         run: |
           sg microk8s -c "tox -e integration -- --model testing"
 
-      - name: Setup tmate session
-        if: failure()
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 60
-        with:
-          limit-access-to-actor: false
-
       - name: Get all
         run: kubectl get all -A
         if: failure()

@@ -1,5 +1,6 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
+"""Unit tests. Harness and Mocks are defined in conftest.py"""
 from ops.model import ActiveStatus, WaitingStatus
 
 

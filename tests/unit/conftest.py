@@ -12,7 +12,6 @@ from charm import KubeflowProfilesOperator, KubernetesServicePatch
 @pytest.fixture
 def harness():
     harness = Harness(KubeflowProfilesOperator)
-    # harness.set_leader(True)
     harness.set_can_connect("kubeflow-profiles", True)
     harness.set_can_connect("kubeflow-kfam", True)
     return harness
