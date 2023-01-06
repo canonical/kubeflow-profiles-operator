@@ -11,9 +11,9 @@ from .test_operator_fixtures import (  # noqa F401
 
 
 def test_not_leader(
-    harness,    # noqa F811
+    harness,  # noqa F811
     mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,    # noqa F811
+    mocked_resource_handler,  # noqa F811
 ):
     """Test not a leader scenario"""
     harness.begin_with_initial_hooks()
@@ -23,9 +23,9 @@ def test_not_leader(
 
 
 def test_profiles_container_running(
-    harness,    # noqa F811
+    harness,  # noqa F811
     mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,    # noqa F811
+    mocked_resource_handler,  # noqa F811
 ):
     """Test that kubeflow-profiles container is running"""
     harness.set_leader(True)
@@ -35,9 +35,9 @@ def test_profiles_container_running(
 
 
 def test_kfam_container_running(
-    harness,    # noqa F811
+    harness,  # noqa F811
     mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,    # noqa F811
+    mocked_resource_handler,  # noqa F811
 ):
     """Test that kubeflow-kfam container is running"""
     harness.set_leader(True)
@@ -47,9 +47,9 @@ def test_kfam_container_running(
 
 
 def test_no_relation(
-    harness,    # noqa F811
+    harness,  # noqa F811
     mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,    # noqa F811
+    mocked_resource_handler,  # noqa F811
 ):
     """Test no relation scenario"""
     harness.set_leader(True)
@@ -74,9 +74,9 @@ def test_no_relation(
 
 
 def test_profiles_pebble_layer(
-    harness,    # noqa F811
+    harness,  # noqa F811
     mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,    # noqa F811
+    mocked_resource_handler,  # noqa F811
 ):
     """Test creation of Profiles Pebble layer. Only testing specific items."""
     harness.set_leader(True)
@@ -99,9 +99,9 @@ def test_profiles_pebble_layer(
 
 
 def test_kfam_pebble_layer(
-    harness,    # noqa F811
+    harness,  # noqa F811
     mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,    # noqa F811
+    mocked_resource_handler,  # noqa F811
 ):
     """Test creation of kfam Pebble layer. Only testing specific items."""
     harness.set_leader(True)
