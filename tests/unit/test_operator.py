@@ -2,6 +2,11 @@
 # See LICENSE file for licensing details.
 """Unit tests. Harness and Mocks are defined in conftest.py"""
 from ops.model import ActiveStatus, WaitingStatus
+from .test_operator_fixtures import (
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
+)
 
 
 def test_not_leader(
