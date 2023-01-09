@@ -23,7 +23,7 @@ from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
 K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
-NAMESPACE_LABELS_FILE = "src/files/namespace-labels.yaml"
+NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
 
 
 class KubeflowProfilesOperator(CharmBase):
