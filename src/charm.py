@@ -31,6 +31,7 @@ class KubeflowProfilesOperator(CharmBase):
     _stored = StoredState()
 
     def __init__(self, *args):
+        """Initialize charm and setup the container."""
         super().__init__(*args)
 
         self.log = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ class KubeflowProfilesOperator(CharmBase):
 
     @property
     def profiles_container(self):
-        """Return profile container"""
+        """Return profiles container"""
         return self._profiles_container
 
     @property
@@ -83,7 +84,7 @@ class KubeflowProfilesOperator(CharmBase):
 
     @property
     def _context(self):
-        """ "Context to be used for updating K8S resources"""
+        """Context to be used for updating K8S resources"""
         context = {
             "app_name": self.model.app.name,
             "model_name": self.model.name,
@@ -105,11 +106,12 @@ class KubeflowProfilesOperator(CharmBase):
 
     @k8s_resource_handler.setter
     def k8s_resource_handler(self, handler: KRH):
+        """Set K8S resource handler"""
         self._k8s_resource_handler = handler
 
     @property
     def _profiles_pebble_layer(self) -> Layer:
-        """Return the Pebble layer for the workload."""
+        """Return the Profiles Pebble layer for the workload."""
         return Layer(
             {
                 "services": {
@@ -140,7 +142,7 @@ class KubeflowProfilesOperator(CharmBase):
 
     @property
     def _kfam_pebble_layer(self) -> Layer:
-        """Return the Pebble layer for the workload."""
+        """Return the kfam Pebble layer for the workload."""
         return Layer(
             {
                 "services": {
@@ -170,6 +172,7 @@ class KubeflowProfilesOperator(CharmBase):
         )
 
     def _deploy_k8s_resources(self):
+        """Deploys K8S resources."""
         try:
             self.unit.status = MaintenanceStatus("Creating K8S resources")
             self.k8s_resource_handler.apply()
@@ -239,7 +242,7 @@ class KubeflowProfilesOperator(CharmBase):
         self.unit.status = MaintenanceStatus("kfam layer configured")
 
     def _on_kubeflow_profiles_ready(self, event):
-        """Define and start a workload using the Pebble API.
+        """Define and start a workload for Profiles using the Pebble API.
         Learn more about Pebble layers at https://github.com/canonical/pebble
         """
         try:
@@ -253,7 +256,7 @@ class KubeflowProfilesOperator(CharmBase):
                 self.log.info(str(e.msg))
 
     def _on_kfam_ready(self, event):
-        """Define and start a workload using the Pebble API.
+        """Define and start a workload for KF Access Management using the Pebble API.
         Learn more about Pebble layers at https://github.com/canonical/pebble
         """
         try:
@@ -267,6 +270,7 @@ class KubeflowProfilesOperator(CharmBase):
                 self.log.info(str(e.msg))
 
     def _on_remove(self, event):
+        """Remove all resources."""
         self.unit.status = MaintenanceStatus("Removing k8s resources")
         manifests = self.k8s_resource_handler.render_manifests()
         try:
@@ -276,7 +280,8 @@ class KubeflowProfilesOperator(CharmBase):
             raise e
         self.unit.status = MaintenanceStatus("K8s resources removed")
 
-    def _send_info(self, event, interfaces):
+    def _send_info(self, interfaces):
+        """Send Kubeflow Profiles interface info"""
         if interfaces["kubeflow-profiles"]:
             interfaces["kubeflow-profiles"].send_data(
                 {
@@ -286,6 +291,7 @@ class KubeflowProfilesOperator(CharmBase):
             )
 
     def _check_leader(self):
+        """Check if this unit is a leader."""
         if not self.unit.is_leader():
             # We can't do anything useful when not the leader, so do nothing.
             self.log.info("Not a leader, skipping setup")
@@ -297,6 +303,7 @@ class KubeflowProfilesOperator(CharmBase):
             raise ErrorWithStatus("Pod startup is not complete", MaintenanceStatus)
 
     def _get_interfaces(self):
+        """Retrieve interface object."""
         try:
             interfaces = get_interfaces(self)
         except NoVersionsListed as err:
@@ -306,6 +313,7 @@ class KubeflowProfilesOperator(CharmBase):
         return interfaces
 
     def main(self, event):
+        """Perform all required actions for the Charm."""
         try:
             self._update_profiles_container(event)
             self._update_kfam_container(event)
@@ -316,7 +324,7 @@ class KubeflowProfilesOperator(CharmBase):
             self.model.unit.status = error.status
             return
 
-        self._send_info(event, interfaces)
+        self._send_info(interfaces)
 
         self.model.unit.status = ActiveStatus()
 
