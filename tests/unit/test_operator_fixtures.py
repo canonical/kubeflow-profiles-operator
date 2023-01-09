@@ -20,7 +20,7 @@ def harness():
 
 @pytest.fixture()
 def mocked_kubernetes_service_patcher(mocker):
-    """Mock K8S Servie Patch and Namespace."""
+    """Mock K8S Service Patch and Namespace."""
     mocker.patch.object(KubernetesServicePatch, "_namespace", lambda x, y: "")
     mocker.patch.object(KubernetesServicePatch, "_patch", lambda x, y: None)
 
