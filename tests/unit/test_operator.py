@@ -1,6 +1,6 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
-"""Unit tests. Harness and Mocks are defined in conftest.py"""
+"""Unit tests. Harness and Mocks are defined in test_operator_fixtures.py."""
 from ops.model import ActiveStatus, WaitingStatus
 
 from .test_operator_fixtures import (  # noqa F401
@@ -15,7 +15,7 @@ def test_not_leader(
     mocked_kubernetes_service_patcher,  # noqa F811
     mocked_resource_handler,  # noqa F811
 ):
-    """Test not a leader scenario"""
+    """Test not a leader scenario."""
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-profiles")
     harness.container_pebble_ready("kubeflow-kfam")
@@ -27,7 +27,7 @@ def test_profiles_container_running(
     mocked_kubernetes_service_patcher,  # noqa F811
     mocked_resource_handler,  # noqa F811
 ):
-    """Test that kubeflow-profiles container is running"""
+    """Test that kubeflow-profiles container is running."""
     harness.set_leader(True)
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-profiles")
@@ -39,7 +39,7 @@ def test_kfam_container_running(
     mocked_kubernetes_service_patcher,  # noqa F811
     mocked_resource_handler,  # noqa F811
 ):
-    """Test that kubeflow-kfam container is running"""
+    """Test that kubeflow-kfam container is running."""
     harness.set_leader(True)
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-kfam")
@@ -51,7 +51,7 @@ def test_no_relation(
     mocked_kubernetes_service_patcher,  # noqa F811
     mocked_resource_handler,  # noqa F811
 ):
-    """Test no relation scenario"""
+    """Test no relation scenario."""
     harness.set_leader(True)
     harness.add_oci_resource(
         "profile-image",

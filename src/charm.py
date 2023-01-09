@@ -74,17 +74,17 @@ class KubeflowProfilesOperator(CharmBase):
 
     @property
     def profiles_container(self):
-        """Return profiles container"""
+        """Return profiles container."""
         return self._profiles_container
 
     @property
     def kfam_container(self):
-        """Return kfam container"""
+        """Return kfam container."""
         return self._kfam_container
 
     @property
     def _context(self):
-        """Context to be used for updating K8S resources"""
+        """Context to be used for updating K8S resources."""
         context = {
             "app_name": self.model.app.name,
             "model_name": self.model.name,
@@ -106,7 +106,7 @@ class KubeflowProfilesOperator(CharmBase):
 
     @k8s_resource_handler.setter
     def k8s_resource_handler(self, handler: KRH):
-        """Set K8S resource handler"""
+        """Set K8S resource handler."""
         self._k8s_resource_handler = handler
 
     @property
@@ -182,7 +182,7 @@ class KubeflowProfilesOperator(CharmBase):
         self.model.unit.status = MaintenanceStatus("K8S resources created")
 
     def _update_profiles_layer(self) -> None:
-        """Updates the Pebble configuration layer if changed."""
+        """Update the Pebble configuration layer if changed."""
         if not self.profiles_container.can_connect():
             raise ErrorWithStatus("Waiting for pod startup to complete", MaintenanceStatus)
 
@@ -207,7 +207,7 @@ class KubeflowProfilesOperator(CharmBase):
                 raise ErrorWithStatus("Failed to replan", BlockedStatus)
 
     def _update_profiles_container(self, event) -> None:
-        """Updates the Profiles Pebble configuration layer if changed."""
+        """Update the Profiles Pebble configuration layer if changed."""
         if not self.profiles_container.can_connect():
             self.unit.status = WaitingStatus("Waiting to connect to Profiles container")
             event.defer()
@@ -222,7 +222,7 @@ class KubeflowProfilesOperator(CharmBase):
         self.unit.status = MaintenanceStatus("Profiles layer configured")
 
     def _update_kfam_container(self, event) -> None:
-        """Updates the kfam Pebble configuration layer if changed."""
+        """Update the kfam Pebble configuration layer if changed."""
         if not self.profiles_container.can_connect():
             self.unit.status = WaitingStatus("Waiting to connect to kfam container")
             event.defer()
@@ -243,6 +243,7 @@ class KubeflowProfilesOperator(CharmBase):
 
     def _on_kubeflow_profiles_ready(self, event):
         """Define and start a workload for Profiles using the Pebble API.
+
         Learn more about Pebble layers at https://github.com/canonical/pebble
         """
         try:
@@ -257,6 +258,7 @@ class KubeflowProfilesOperator(CharmBase):
 
     def _on_kfam_ready(self, event):
         """Define and start a workload for KF Access Management using the Pebble API.
+
         Learn more about Pebble layers at https://github.com/canonical/pebble
         """
         try:
@@ -281,7 +283,7 @@ class KubeflowProfilesOperator(CharmBase):
         self.unit.status = MaintenanceStatus("K8s resources removed")
 
     def _send_info(self, interfaces):
-        """Send Kubeflow Profiles interface info"""
+        """Send Kubeflow Profiles interface info."""
         if interfaces["kubeflow-profiles"]:
             interfaces["kubeflow-profiles"].send_data(
                 {
@@ -333,6 +335,7 @@ class CheckFailed(Exception):
     """Raise this exception if one of the checks in main fails."""
 
     def __init__(self, msg: str, status_type=None):
+        """Initialize CheckFailed exception."""
         super().__init__()
 
         self.msg = str(msg)
