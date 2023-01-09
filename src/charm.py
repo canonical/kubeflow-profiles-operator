@@ -247,10 +247,7 @@ class KubeflowProfilesOperator(CharmBase):
         self.unit.status = MaintenanceStatus("kfam layer configured")
 
     def _on_kubeflow_profiles_ready(self, event):
-        """Define and start a workload for Profiles using the Pebble API.
-
-        Learn more about Pebble layers at https://github.com/canonical/pebble
-        """
+        """Update the started Profiles container."""
         try:
             self._update_profiles_container(event)
 
@@ -262,10 +259,7 @@ class KubeflowProfilesOperator(CharmBase):
                 self.log.info(str(e.msg))
 
     def _on_kfam_ready(self, event):
-        """Define and start a workload for KF Access Management using the Pebble API.
-
-        Learn more about Pebble layers at https://github.com/canonical/pebble
-        """
+        """Update the started kfam container."""
         try:
             self._update_kfam_container(event)
 
