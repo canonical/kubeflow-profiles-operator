@@ -1,30 +1,57 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
+"""Unit tests. Harness and Mocks are defined in test_operator_fixtures.py."""
+from ops.model import ActiveStatus, WaitingStatus
 
-import pytest
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
-from ops.testing import Harness
-
-from charm import Operator
-
-
-@pytest.fixture
-def harness():
-    return Harness(Operator)
+from .test_operator_fixtures import (  # noqa F401
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
+)
 
 
-def test_not_leader(harness):
+def test_not_leader(
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test not a leader scenario."""
     harness.begin_with_initial_hooks()
+    harness.container_pebble_ready("kubeflow-profiles")
+    harness.container_pebble_ready("kubeflow-kfam")
     assert harness.charm.model.unit.status == WaitingStatus("Waiting for leadership")
 
 
-def test_missing_image(harness):
+def test_profiles_container_running(
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test that kubeflow-profiles container is running."""
     harness.set_leader(True)
     harness.begin_with_initial_hooks()
-    assert harness.charm.model.unit.status == BlockedStatus("Missing resource: profile-image")
+    harness.container_pebble_ready("kubeflow-profiles")
+    assert harness.charm.profiles_container.get_service("kubeflow-profiles").is_running()
 
 
-def test_no_relation(harness):
+def test_kfam_container_running(
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test that kubeflow-kfam container is running."""
+    harness.set_leader(True)
+    harness.begin_with_initial_hooks()
+    harness.container_pebble_ready("kubeflow-kfam")
+    assert harness.charm.kfam_container.get_service("kubeflow-kfam").is_running()
+
+
+def test_no_relation(
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test no relation scenario."""
     harness.set_leader(True)
     harness.add_oci_resource(
         "profile-image",
@@ -43,6 +70,55 @@ def test_no_relation(harness):
         },
     )
     harness.begin_with_initial_hooks()
-
-    _ = harness.get_pod_spec()
     assert harness.charm.model.unit.status == ActiveStatus("")
+
+
+def test_profiles_pebble_layer(
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test creation of Profiles Pebble layer. Only testing specific items."""
+    harness.set_leader(True)
+    harness.set_model_name("test_kubeflow")
+    harness.begin_with_initial_hooks()
+    harness.container_pebble_ready("kubeflow-profiles")
+    pebble_plan = harness.get_container_pebble_plan("kubeflow-profiles")
+    assert pebble_plan
+    assert pebble_plan._services
+    pebble_plan_info = pebble_plan.to_dict()
+    assert (
+        pebble_plan_info["services"]["kubeflow-profiles"]["command"] == "/manager "
+        "-userid-header "
+        "kubeflow-userid "
+        "-userid-prefix "
+        " "
+        "-workload-identity "
+        " "
+    )
+
+
+def test_kfam_pebble_layer(
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test creation of kfam Pebble layer. Only testing specific items."""
+    harness.set_leader(True)
+    harness.set_model_name("test_kubeflow")
+    harness.begin_with_initial_hooks()
+    harness.container_pebble_ready("kubeflow-kfam")
+    pebble_plan = harness.get_container_pebble_plan("kubeflow-kfam")
+    assert pebble_plan
+    assert pebble_plan._services
+    pebble_plan_info = pebble_plan.to_dict()
+    assert (
+        pebble_plan_info["services"]["kubeflow-kfam"]["command"]
+        == "/access-management "  # noqa: W503
+        "-cluster-admin "
+        "admin "
+        "-userid-header "
+        "kubeflow-userid "
+        "-userid-prefix "
+        '""'
+    )

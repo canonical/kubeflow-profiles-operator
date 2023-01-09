@@ -1,11 +1,12 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
-
+"""Integration tests for Kueflow Profiles Operator."""
 import logging
 from pathlib import Path
 
 import lightkube
 import pytest
+import requests
 import yaml
 from lightkube import codecs
 from lightkube.generic_resource import create_global_resource
@@ -16,10 +17,13 @@ from tenacity import retry, stop_after_delay, wait_exponential
 log = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
+CHARM_NAME = METADATA["name"]
 
 
 @pytest.mark.abort_on_fail
+@pytest.mark.skip_if_deployed
 async def test_build_and_deploy(ops_test):
+    """Build the charm-under-test and deploy it."""
     my_charm = await ops_test.build_charm(".")
     kfam_image_path = METADATA["resources"]["kfam-image"]["upstream-source"]
     profile_image_path = METADATA["resources"]["profile-image"]["upstream-source"]
@@ -28,7 +32,7 @@ async def test_build_and_deploy(ops_test):
         "profile-image": profile_image_path,
     }
 
-    await ops_test.model.deploy(my_charm, resources=resources)
+    await ops_test.model.deploy(my_charm, resources=resources, trust=True)
 
     await ops_test.model.block_until(
         lambda: all(
@@ -41,27 +45,46 @@ async def test_build_and_deploy(ops_test):
 
 
 async def test_status(ops_test):
-    charm_name = METADATA["name"]
-    assert ops_test.model.applications[charm_name].units[0].workload_status == "active"
+    """Assert on the unit status."""
+    assert ops_test.model.applications[CHARM_NAME].units[0].workload_status == "active"
 
 
 # Parameterize to two different profiles?
 async def test_profile_creation(lightkube_client, profile):
-    # Test whether a namespace was created for this profile
+    """Test whether a namespace was created for this profile."""
     profile_name = profile
     validate_profile_namespace(lightkube_client, profile_name)
+
+
+async def test_health_check_profiles(ops_test):
+    """Test whether the profiles health check endpoint responds with 200."""
+    status = await ops_test.model.get_status()
+    profiles_units = status["applications"]["kubeflow-profiles"]["units"]
+    profiles_url = profiles_units["kubeflow-profiles/0"]["address"]
+    result = requests.get(f"http://{profiles_url}:8080/metrics")
+    assert result.status_code == 200
+
+
+async def test_health_check_kfam(ops_test):
+    """Test whether the kfam health check endpoint responds with 200."""
+    status = await ops_test.model.get_status()
+    profiles_units = status["applications"]["kubeflow-profiles"]["units"]
+    profiles_url = profiles_units["kubeflow-profiles/0"]["address"]
+    result = requests.get(f"http://{profiles_url}:8081/metrics")
+    assert result.status_code == 200
 
 
 # Helpers
 @pytest.fixture(scope="session")
 def lightkube_client() -> lightkube.Client:
+    """Initialize lightkube and create Profile resource."""
     client = lightkube.Client()
     create_global_resource(group="kubeflow.org", version="v1", kind="Profile", plural="profiles")
     return client
 
 
 def _safe_load_file_to_text(filename: str):
-    """Returns the contents of filename if it is an existing file, else it returns filename"""
+    """Return the contents of filename if it is an existing file, else return filename."""
     try:
         text = Path(filename).read_text()
     except FileNotFoundError:
@@ -71,7 +94,7 @@ def _safe_load_file_to_text(filename: str):
 
 @pytest.fixture()
 def profile(lightkube_client):
-    """Creates a Profile object in cluster, cleaning it up after"""
+    """Create a Profile object in cluster, cleaning it up after."""
     profile_file = "./tests/integration/profile.yaml"
     yaml_text = _safe_load_file_to_text(profile_file)
     yaml_rendered = yaml.safe_load(yaml_text)
@@ -100,7 +123,7 @@ def create_all_from_yaml(
     if_exists: [str, None] = None,
     lightkube_client: lightkube.Client = None,
 ):
-    """Creates all k8s resources listed in a YAML file via lightkube
+    """Create all k8s resources listed in a YAML file via lightkube.
 
     Args:
         yaml_file (str or Path): Either a string filename or a string of valid YAML.  Will attempt
@@ -147,7 +170,7 @@ def create_all_from_yaml(
 
 
 def delete_all_from_yaml(yaml_file: str, lightkube_client: lightkube.Client = None):
-    """Deletes all k8s resources listed in a YAML file via lightkube
+    """Delete all k8s resources listed in a YAML file via lightkube.
 
     Args:
         yaml_file (str or Path): Either a string filename or a string of valid YAML.  Will attempt
@@ -172,9 +195,9 @@ def delete_all_from_yaml(yaml_file: str, lightkube_client: lightkube.Client = No
 def validate_profile_namespace(
     client: lightkube.Client,
     profile_name: str,
-    namespace_label_file: str = "./files/namespace-labels.yaml",
+    namespace_label_file: str = "./src/templates/namespace-labels.yaml",
 ):
-    """Validates that a namespace for a Profile exists and has the expected properties
+    """Validate that a namespace for a Profile exists and has the expected properties.
 
     Retries multiple times using tenacity to allow time for profile-controller to create the
     namespace

@@ -3,8 +3,11 @@
 name: kubeflow-profiles
 summary: Kubeflow Profiles and Access Management
 description: Kubeflow Profiles and Access Management
-min-juju-version: '2.9.0'
-series: [kubernetes]
+containers:
+  kubeflow-profiles:
+    resource: profile-image
+  kubeflow-kfam:
+    resource: kfam-image
 resources:
   profile-image:
     type: oci-image

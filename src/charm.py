@@ -2,165 +2,287 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import logging
-from pathlib import Path
+"""A Juju Charm for Kubeflow Profiles Operator."""
 
-import yaml
-from oci_image import OCIImageResource, OCIImageResourceError
+import logging
+import traceback
+
+from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
+from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
+from charmed_kubeflow_chisme.lightkube.batch import delete_many
+from charmed_kubeflow_chisme.pebble import update_layer
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
+from lightkube import ApiError
+from lightkube.generic_resource import load_in_cluster_generic_resources
+from lightkube.models.core_v1 import ServicePort
 from ops.charm import CharmBase
 from ops.framework import StoredState
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
+K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
+NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
 
-class Operator(CharmBase):
+
+class KubeflowProfilesOperator(CharmBase):
+    """A Juju Charm for Kubeflow Profiles Operator."""
+
     _stored = StoredState()
 
     def __init__(self, *args):
+        """Initialize charm and setup the container."""
         super().__init__(*args)
 
         self.log = logging.getLogger(__name__)
 
-        self.profile_image = OCIImageResource(self, "profile-image")
-        self.kfam_image = OCIImageResource(self, "kfam-image")
+        self._manager_port = self.model.config["manager-port"]
+        self._kfam_port = self.model.config["port"]
+
+        manager_port = ServicePort(int(self._manager_port), name="manager")
+        kfam_port = ServicePort(int(self._kfam_port), name="http")
+        self.service_patcher = KubernetesServicePatch(
+            self, [manager_port, kfam_port], service_name=f"{self.model.app.name}"
+        )
+
+        self._profiles_container_name = "kubeflow-profiles"
+        self._profiles_container = self.unit.get_container(self._profiles_container_name)
+
+        self._kfam_container_name = "kubeflow-kfam"
+        self._kfam_container = self.unit.get_container(self._kfam_container_name)
+
+        self._namespace = self.model.name
+        self._name = self.model.app.name
+        self._lightkube_field_manager = "lightkube"
+        self._k8s_resource_handler = None
+
+        self.framework.observe(self.on.config_changed, self.service_patcher._patch)
+        self.framework.observe(self.on.remove, self._on_remove)
 
         for event in [
             self.on.install,
             self.on.leader_elected,
             self.on.upgrade_charm,
-            self.on.config_changed,
             self.on["kubeflow-profiles"].relation_changed,
+            self.on.config_changed,
         ]:
             self.framework.observe(event, self.main)
+        self.framework.observe(
+            self.on.kubeflow_profiles_pebble_ready, self._on_kubeflow_profiles_ready
+        )
+        self.framework.observe(self.on.kubeflow_kfam_pebble_ready, self._on_kfam_ready)
 
-    def main(self, event):
-        try:
-            self._check_leader()
+    @property
+    def profiles_container(self):
+        """Return profiles container."""
+        return self._profiles_container
 
-            interfaces = self._get_interfaces()
+    @property
+    def kfam_container(self):
+        """Return kfam container."""
+        return self._kfam_container
 
-            profile_image_details = self.profile_image.fetch()
-            kfam_image_details = self.kfam_image.fetch()
+    @property
+    def _context(self):
+        """Set up the context to be used for updating K8S resources."""
+        context = {
+            "app_name": self.model.app.name,
+            "model_name": self.model.name,
+        }
+        return context
 
-        except (CheckFailed, OCIImageResourceError) as error:
-            self.model.unit.status = error.status
-            return
+    @property
+    def k8s_resource_handler(self):
+        """Update K8S with K8S resources."""
+        if not self._k8s_resource_handler:
+            self._k8s_resource_handler = KRH(
+                field_manager=self._lightkube_field_manager,
+                template_files=K8S_RESOURCE_FILES,
+                context=self._context,
+                logger=self.log,
+            )
+        load_in_cluster_generic_resources(self._k8s_resource_handler.lightkube_client)
+        return self._k8s_resource_handler
 
-        self._send_info(event, interfaces)
+    @k8s_resource_handler.setter
+    def k8s_resource_handler(self, handler: KRH):
+        """Set K8S resource handler."""
+        self._k8s_resource_handler = handler
 
-        namespace_labels_filename = "namespace-labels.yaml"
-
-        self.model.pod.set_spec(
-            spec={
-                "version": 3,
-                "serviceAccount": {
-                    "roles": [
-                        {
-                            "global": True,
-                            "rules": [
-                                {
-                                    "apiGroups": ["*"],
-                                    "resources": ["*"],
-                                    "verbs": ["*"],
-                                },
-                                {"nonResourceURLs": ["*"], "verbs": ["*"]},
-                            ],
-                        }
-                    ]
-                },
-                "containers": [
-                    {
-                        "name": "kubeflow-profiles",
-                        "imageDetails": profile_image_details,
-                        "command": ["/manager"],
-                        "args": [
-                            "-userid-header",
-                            "kubeflow-userid",
-                            "-userid-prefix",
-                            "",
-                            "-workload-identity",
-                            "",
-                        ],
-                        "ports": [
-                            {
-                                "name": "manager",
-                                "containerPort": self.model.config["manager-port"],
-                            }
-                        ],
-                        "kubernetes": {
-                            "livenessProbe": {
-                                "httpGet": {
-                                    "path": "/metrics",
-                                    "port": self.model.config["manager-port"],
-                                },
-                                "initialDelaySeconds": 30,
-                                "periodSeconds": 30,
-                            }
-                        },
-                        "volumeConfig": [
-                            {
-                                "name": "namespace-labels-data",
-                                "mountPath": "/etc/profile-controller",
-                                "configMap": {
-                                    "name": "namespace-labels-data",
-                                    "files": [
-                                        {
-                                            "key": namespace_labels_filename,
-                                            "path": namespace_labels_filename,
-                                        }
-                                    ],
-                                },
-                            }
-                        ],
-                    },
-                    {
-                        "name": "kubeflow-kfam",
-                        "imageDetails": kfam_image_details,
-                        "command": ["/access-management"],
-                        "args": [
-                            "-cluster-admin",
-                            "admin",
-                            "-userid-header",
-                            "kubeflow-userid",
-                            "-userid-prefix",
-                            "",
-                        ],
-                        "ports": [{"name": "http", "containerPort": self.model.config["port"]}],
-                        "kubernetes": {
-                            "livenessProbe": {
-                                "httpGet": {
-                                    "path": "/metrics",
-                                    "port": self.model.config["port"],
-                                },
-                                "initialDelaySeconds": 30,
-                                "periodSeconds": 30,
-                            }
-                        },
-                    },
-                ],
-            },
-            k8s_resources={
-                "kubernetesResources": {
-                    "customResourceDefinitions": [
-                        {"name": crd["metadata"]["name"], "spec": crd["spec"]}
-                        for crd in yaml.safe_load_all(Path("files/crds.yaml").read_text())
-                    ],
-                },
-                "configMaps": {
-                    "namespace-labels-data": {
-                        namespace_labels_filename: Path(
-                            f"files/{namespace_labels_filename}"
-                        ).read_text(),
+    @property
+    def _profiles_pebble_layer(self) -> Layer:
+        """Return the Profiles Pebble layer for the workload."""
+        return Layer(
+            {
+                "services": {
+                    self._profiles_container_name: {
+                        "override": "replace",
+                        "summary": "entry point for kubeflow profiles",
+                        "command": (
+                            "/manager "
+                            "-userid-header "
+                            "kubeflow-userid "
+                            "-userid-prefix "
+                            " "
+                            "-workload-identity "
+                            " "
+                        ),
+                        "startup": "enabled",
                     }
                 },
-            },
+                "checks": {
+                    "kubeflow-profiles-get": {
+                        "override": "replace",
+                        "period": "30s",
+                        "http": {"url": "http://localhost:8080/metrics"},
+                    },
+                },
+            }
         )
-        self.log.info("pod.set_spec() completed without errors")
 
-        self.model.unit.status = ActiveStatus()
+    @property
+    def _kfam_pebble_layer(self) -> Layer:
+        """Return the kfam Pebble layer for the workload."""
+        return Layer(
+            {
+                "services": {
+                    self._kfam_container_name: {
+                        "override": "replace",
+                        "summary": "entry point for kubeflow access management",
+                        "command": (
+                            "/access-management "
+                            "-cluster-admin "
+                            "admin "
+                            "-userid-header "
+                            "kubeflow-userid "
+                            "-userid-prefix "
+                            '""'
+                        ),
+                        "startup": "enabled",
+                    }
+                },
+                "checks": {
+                    "kubeflow-kfam-get": {
+                        "override": "replace",
+                        "period": "30s",
+                        "http": {"url": "http://localhost:8081/metrics"},
+                    },
+                },
+            }
+        )
 
-    def _send_info(self, event, interfaces):
+    def _deploy_k8s_resources(self):
+        """Deploy K8S resources."""
+        try:
+            self.unit.status = MaintenanceStatus("Creating K8S resources")
+            self.k8s_resource_handler.apply()
+
+        except ApiError:
+            raise ErrorWithStatus("K8S resources creation failed", BlockedStatus)
+        self.model.unit.status = MaintenanceStatus("K8S resources created")
+
+    def _update_profiles_layer(self) -> None:
+        """Update the Profile Pebble layer if changed.
+
+        Push the namespace labels file to the container
+        Add the Pebble layer and Replan
+        """
+        if not self.profiles_container.can_connect():
+            raise ErrorWithStatus("Waiting for pod startup to complete", MaintenanceStatus)
+
+        current_layer = self.profiles_container.get_plan()
+
+        if current_layer.services != self._profiles_pebble_layer.services:
+            with open(NAMESPACE_LABELS_FILE, encoding="utf-8") as labels_file:
+                labels = labels_file.read()
+            self.profiles_container.push(
+                "/etc/profile-controller/namespace-labels.yaml",
+                labels,
+                make_dirs=True,
+            )
+            self.profiles_container.add_layer(
+                self._profiles_container_name, self._profiles_pebble_layer, combine=True
+            )
+            try:
+                self.log.info("Pebble plan updated with new configuration, replanning")
+                self.profiles_container.replan()
+            except ChangeError:
+                self.log.error(traceback.format_exc())
+                raise ErrorWithStatus("Failed to replan", BlockedStatus)
+
+    def _update_profiles_container(self, event) -> None:
+        """Check leader and call the update profiles layer method."""
+        if not self.profiles_container.can_connect():
+            self.unit.status = WaitingStatus("Waiting to connect to Profiles container")
+            event.defer()
+            return
+
+        try:
+            self._check_leader()
+            self.unit.status = MaintenanceStatus("Configuring Profiles layer")
+            self._update_profiles_layer()
+        except ErrorWithStatus as error:
+            raise error
+        self.unit.status = MaintenanceStatus("Profiles layer configured")
+
+    def _update_kfam_container(self, event) -> None:
+        """Update the kfam Pebble configuration layer if changed."""
+        if not self.profiles_container.can_connect():
+            self.unit.status = WaitingStatus("Waiting to connect to kfam container")
+            event.defer()
+            return
+
+        try:
+            self._check_leader()
+            self.unit.status = MaintenanceStatus("Configuring kfam layer")
+            update_layer(
+                self._kfam_container_name,
+                self.kfam_container,
+                self._kfam_pebble_layer,
+                self.log,
+            )
+        except ErrorWithStatus as error:
+            raise error
+        self.unit.status = MaintenanceStatus("kfam layer configured")
+
+    def _on_kubeflow_profiles_ready(self, event):
+        """Update the started Profiles container."""
+        try:
+            self._update_profiles_container(event)
+
+        except ErrorWithStatus as e:
+            self.model.unit.status = e.status
+            if isinstance(e.status, BlockedStatus):
+                self.log.error(str(e.msg))
+            else:
+                self.log.info(str(e.msg))
+
+    def _on_kfam_ready(self, event):
+        """Update the started kfam container."""
+        try:
+            self._update_kfam_container(event)
+
+        except ErrorWithStatus as e:
+            self.model.unit.status = e.status
+            if isinstance(e.status, BlockedStatus):
+                self.log.error(str(e.msg))
+            else:
+                self.log.info(str(e.msg))
+
+    def _on_remove(self, event):
+        """Remove all resources."""
+        self.unit.status = MaintenanceStatus("Removing k8s resources")
+        manifests = self.k8s_resource_handler.render_manifests()
+        try:
+            delete_many(self.k8s_resource_handler.lightkube_client, manifests)
+        except ApiError as e:
+            self.log.warning(f"Failed to delete resources: {manifests} with: {e}")
+            raise e
+        self.unit.status = MaintenanceStatus("K8s resources removed")
+
+    def _send_info(self, interfaces):
+        """Send Kubeflow Profiles interface info."""
         if interfaces["kubeflow-profiles"]:
             interfaces["kubeflow-profiles"].send_data(
                 {
@@ -170,11 +292,19 @@ class Operator(CharmBase):
             )
 
     def _check_leader(self):
+        """Check if this unit is a leader."""
         if not self.unit.is_leader():
             # We can't do anything useful when not the leader, so do nothing.
-            raise CheckFailed("Waiting for leadership", WaitingStatus)
+            self.log.info("Not a leader, skipping setup")
+            raise ErrorWithStatus("Waiting for leadership", WaitingStatus)
+
+    def _check_container_connection(self, container):
+        """Check if connection can be made with container."""
+        if not container.can_connect():
+            raise ErrorWithStatus("Pod startup is not complete", MaintenanceStatus)
 
     def _get_interfaces(self):
+        """Retrieve interface object."""
         try:
             interfaces = get_interfaces(self)
         except NoVersionsListed as err:
@@ -183,11 +313,28 @@ class Operator(CharmBase):
             raise CheckFailed(err, BlockedStatus)
         return interfaces
 
+    def main(self, event):
+        """Perform all required actions for the Charm."""
+        try:
+            self._update_profiles_container(event)
+            self._update_kfam_container(event)
+            self._deploy_k8s_resources()
+            interfaces = self._get_interfaces()
+
+        except ErrorWithStatus as error:
+            self.model.unit.status = error.status
+            return
+
+        self._send_info(interfaces)
+
+        self.model.unit.status = ActiveStatus()
+
 
 class CheckFailed(Exception):
     """Raise this exception if one of the checks in main fails."""
 
     def __init__(self, msg: str, status_type=None):
+        """Initialize CheckFailed exception."""
         super().__init__()
 
         self.msg = str(msg)
@@ -196,4 +343,4 @@ class CheckFailed(Exception):
 
 
 if __name__ == "__main__":
-    main(Operator)
+    main(KubeflowProfilesOperator)
