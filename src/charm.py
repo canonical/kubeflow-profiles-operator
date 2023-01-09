@@ -23,6 +23,7 @@ from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
 K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
+NAMESPACE_LABELS_FILE = "src/files/namespace-labels.yaml"
 
 
 class KubeflowProfilesOperator(CharmBase):
@@ -84,7 +85,7 @@ class KubeflowProfilesOperator(CharmBase):
 
     @property
     def _context(self):
-        """Context to be used for updating K8S resources."""
+        """Set up the context to be used for updating K8S resources."""
         context = {
             "app_name": self.model.app.name,
             "model_name": self.model.name,
@@ -172,7 +173,7 @@ class KubeflowProfilesOperator(CharmBase):
         )
 
     def _deploy_k8s_resources(self):
-        """Deploys K8S resources."""
+        """Deploy K8S resources."""
         try:
             self.unit.status = MaintenanceStatus("Creating K8S resources")
             self.k8s_resource_handler.apply()
@@ -182,14 +183,18 @@ class KubeflowProfilesOperator(CharmBase):
         self.model.unit.status = MaintenanceStatus("K8S resources created")
 
     def _update_profiles_layer(self) -> None:
-        """Update the Pebble configuration layer if changed."""
+        """Update the Profile Pebble layer if changed.
+
+        Push the namespace labels file to the container
+        Add the Pebble layer and Replan
+        """
         if not self.profiles_container.can_connect():
             raise ErrorWithStatus("Waiting for pod startup to complete", MaintenanceStatus)
 
         current_layer = self.profiles_container.get_plan()
 
         if current_layer.services != self._profiles_pebble_layer.services:
-            with open("src/templates/namespace-labels.yaml", encoding="utf-8") as labels_file:
+            with open(NAMESPACE_LABELS_FILE, encoding="utf-8") as labels_file:
                 labels = labels_file.read()
             self.profiles_container.push(
                 "/etc/profile-controller/namespace-labels.yaml",
@@ -207,7 +212,7 @@ class KubeflowProfilesOperator(CharmBase):
                 raise ErrorWithStatus("Failed to replan", BlockedStatus)
 
     def _update_profiles_container(self, event) -> None:
-        """Update the Profiles Pebble configuration layer if changed."""
+        """Check leader and call the update profiles layer method."""
         if not self.profiles_container.can_connect():
             self.unit.status = WaitingStatus("Waiting to connect to Profiles container")
             event.defer()
