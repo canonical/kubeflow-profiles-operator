@@ -6,16 +6,17 @@
 
 import logging
 import traceback
+from pathlib import Path
 
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
-from lightkube import ApiError
-from lightkube.generic_resource import load_in_cluster_generic_resources
+from lightkube import ApiError, codecs
+from lightkube.generic_resource import create_global_resource, load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
-from ops.charm import CharmBase
+from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
@@ -24,6 +25,11 @@ from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, ge
 
 K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
 NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
+PROFILE_CONFIG_FILES = [
+    "src/templates/allow-minio.yaml",
+    "src/templates/allow-mlflow.yaml",
+    "src/templates/seldon-mlflow.yaml",
+]
 
 
 class KubeflowProfilesOperator(CharmBase):
@@ -72,6 +78,7 @@ class KubeflowProfilesOperator(CharmBase):
             self.on.kubeflow_profiles_pebble_ready, self._on_kubeflow_profiles_ready
         )
         self.framework.observe(self.on.kubeflow_kfam_pebble_ready, self._on_kfam_ready)
+        self.framework.observe(self.on.create_profile_action, self._on_create_profile_action)
 
     @property
     def profiles_container(self):
@@ -312,6 +319,43 @@ class KubeflowProfilesOperator(CharmBase):
         except NoCompatibleVersions as err:
             raise CheckFailed(err, BlockedStatus)
         return interfaces
+
+    def _on_create_profile_action(self, event: ActionEvent) -> None:
+        """Handle the action to create a new profile."""
+        auth_username = event.params.get("auth-username")
+        profile_name = event.params.get("profile-name")
+        self._create_profile(auth_username, profile_name)
+
+    def _create_profile(self, auth_username, profile_name):
+        """Create new profile object."""
+        Profile = create_global_resource(
+            group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
+        )
+        my_profile = Profile(
+            metadata={"name": profile_name},
+            spec={"owner": {"kind": "User", "name": auth_username}},
+        )
+        self.k8s_resource_handler.lightkube_client.create(my_profile)
+        self._configure_profile(profile_name)
+
+    def _configure_profile(self, profile_name):
+        """Add missing configurations to profile."""
+        for file in PROFILE_CONFIG_FILES:
+            yaml_text = self._safe_load_file_to_text(file)
+            self._apply_manifest(yaml_text, profile_name)
+
+    def _apply_manifest(self, manifest, namespace=None):
+        """Apply manifest to namespace."""
+        for obj in codecs.load_all_yaml(manifest):
+            self.k8s_resource_handler.lightkube_client.apply(obj, namespace=namespace)
+
+    def _safe_load_file_to_text(self, filename: str):
+        """Return the contents of filename if it is an existing file, else it returns filename."""
+        try:
+            text = Path(filename).read_text()
+        except FileNotFoundError:
+            text = filename
+        return text
 
     def main(self, event):
         """Perform all required actions for the Charm."""
