@@ -6,11 +6,13 @@
 
 import logging
 import traceback
+from typing import List, Union
 
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
+from charmed_kubeflow_chisme.status_handling import get_first_worst_error
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube import ApiError
 from lightkube.generic_resource import load_in_cluster_generic_resources
@@ -18,13 +20,19 @@ from lightkube.models.core_v1 import ServicePort
 from ops.charm import CharmBase
 from ops.framework import StoredState
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus, StatusBase
 from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
 K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
 NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
 
+# TODO: Use this pattern (see obs charms)
+RAISABLE_STATUSES = {
+    "profiles_cannot_connect": WaitingStatus("Waiting to connect to profiles container"),
+    "kfam_cannot_connect": WaitingStatus("Waiting to connect to kfam container")
+
+}
 
 class KubeflowProfilesOperator(CharmBase):
     """A Juju Charm for Kubeflow Profiles Operator."""
@@ -211,64 +219,40 @@ class KubeflowProfilesOperator(CharmBase):
                 self.log.error(traceback.format_exc())
                 raise ErrorWithStatus("Failed to replan", BlockedStatus)
 
-    def _update_profiles_container(self, event) -> None:
+    def _update_profiles_container(self) -> None:
         """Check leader and call the update profiles layer method."""
         if not self.profiles_container.can_connect():
-            self.unit.status = WaitingStatus("Waiting to connect to Profiles container")
-            event.defer()
-            return
+            raise ErrorWithStatus("Waiting to connect to profiles container", WaitingStatus)
 
-        try:
-            self._check_leader()
-            self.unit.status = MaintenanceStatus("Configuring Profiles layer")
-            self._update_profiles_layer()
-        except ErrorWithStatus as error:
-            raise error
+        self._check_leader()
+
+        self.unit.status = MaintenanceStatus("Configuring Profiles layer")
+        self._update_profiles_layer()
         self.unit.status = MaintenanceStatus("Profiles layer configured")
 
-    def _update_kfam_container(self, event) -> None:
+    def _update_kfam_container(self) -> None:
         """Update the kfam Pebble configuration layer if changed."""
-        if not self.profiles_container.can_connect():
-            self.unit.status = WaitingStatus("Waiting to connect to kfam container")
-            event.defer()
-            return
+        if not self.kfam.can_connect():
+            raise ErrorWithStatus("Waiting to connect to kfam container", WaitingStatus)
 
-        try:
-            self._check_leader()
-            self.unit.status = MaintenanceStatus("Configuring kfam layer")
-            update_layer(
-                self._kfam_container_name,
-                self.kfam_container,
-                self._kfam_pebble_layer,
-                self.log,
+        self._check_leader()
+
+        self.unit.status = MaintenanceStatus("Configuring kfam layer")
+        update_layer(
+            self._kfam_container_name,
+            self.kfam_container,
+            self._kfam_pebble_layer,
+            self.log,
             )
-        except ErrorWithStatus as error:
-            raise error
         self.unit.status = MaintenanceStatus("kfam layer configured")
 
     def _on_kubeflow_profiles_ready(self, event):
-        """Update the started Profiles container."""
-        try:
-            self._update_profiles_container(event)
-
-        except ErrorWithStatus as e:
-            self.model.unit.status = e.status
-            if isinstance(e.status, BlockedStatus):
-                self.log.error(str(e.msg))
-            else:
-                self.log.info(str(e.msg))
+        """Update the live Profiles container."""
+        self.main(event)
 
     def _on_kfam_ready(self, event):
-        """Update the started kfam container."""
-        try:
-            self._update_kfam_container(event)
-
-        except ErrorWithStatus as e:
-            self.model.unit.status = e.status
-            if isinstance(e.status, BlockedStatus):
-                self.log.error(str(e.msg))
-            else:
-                self.log.info(str(e.msg))
+        """Update the live kfam container."""
+        self.main(event)
 
     def _on_remove(self, event):
         """Remove all resources."""
@@ -313,21 +297,56 @@ class KubeflowProfilesOperator(CharmBase):
             raise CheckFailed(err, BlockedStatus)
         return interfaces
 
-    def main(self, event):
+    def main(self, _):
         """Perform all required actions for the Charm."""
         try:
-            self._update_profiles_container(event)
-            self._update_kfam_container(event)
+            self._check_leader()
+        except ErrorWithStatus as e:
+            # End early.  The charm should do nothing if it is not the leader
+            self.log.error(e.message)
+            self.unit.status = e.status
+
+        errors_with_status = []
+        try:
+            self._update_profiles_container()
+        except ErrorWithStatus as e:
+            errors_with_status.append(e)
+
+        try:
+            self._update_kfam_container()
+        except ErrorWithStatus as e:
+            errors_with_status.append(e)
+
+        try:
             self._deploy_k8s_resources()
+        except ErrorWithStatus as e:
+            errors_with_status.append(e)
+
+        try:
             interfaces = self._get_interfaces()
-
+            self._send_info(interfaces)
         except ErrorWithStatus as error:
-            self.model.unit.status = error.status
-            return
+            errors_with_status.append(error.status)
 
-        self._send_info(interfaces)
+        if len(errors_with_status) > 0:
+            # Log all statuses we've encountered, and set unit status based on the first, worst
+            # status we saw
+            self.log.error("Charm configuration encountered the following situations that prevented ActiveStatus:")
+            worst_error = get_first_worst_error(errors_with_status)
+            self.log.error("Setting Unit status to the first, worst encountered status")
+            self.unit.status = worst_error.status
 
-        self.model.unit.status = ActiveStatus()
+        # TODO: Do something here to figure out if we are actually alive and working properly
+        # alive = self.am_I_active()
+        alive = True  # temporarily override
+        if alive:
+            self.model.unit.status = ActiveStatus()
+        else:
+            # Do something here.  Maybe `WaitingStatus()` saying the charm is active but waiting
+            # on the worload?
+            # How would we ensure we eventually check this again and go fully active.
+            # Update_status hook?
+            pass
 
 
 class CheckFailed(Exception):
@@ -340,6 +359,46 @@ class CheckFailed(Exception):
         self.msg = str(msg)
         self.status_type = status_type
         self.status = status_type(self.msg)
+
+
+def get_first_worst_status(statuses: List[Union[BlockedStatus, WaitingStatus, MaintenanceStatus, ActiveStatus]]):
+    """Returns the first of the worst statuses in the list.
+
+    TODO: This should be in Chisme. charmed_kubeflow_chisme.status_handling.get_first_worst_error
+          is nearly identical, but parses statuses.  We should combine these
+
+    Raises if List contains no Exceptions, or if any Exception does not have a .status
+
+    Status are ranked, starting with the worst:
+        BlockedStatus
+        WaitingStatus
+        ActiveStatus
+    """
+    if len(statuses) == 0:
+        raise IndexError("No statuses provided")
+
+    # Higher numbers are worse
+    status_ranks = {
+        BlockedStatus: 4,
+        WaitingStatus: 3,
+        MaintenanceStatus: 2,
+        ActiveStatus: 1,
+        # reserved for empty list: 0
+    }
+    worst_possible_status_rank = max(status_ranks.values())
+
+    worst_status = None
+    worst_status_rank = 0
+
+    for status in statuses:
+        if worst_status_rank < status_ranks[status.__class__]:
+            worst_status = status
+            worst_status_rank = status_ranks[status.__class__]
+
+        if worst_status_rank == worst_possible_status_rank:
+            break
+
+    return worst_status
 
 
 if __name__ == "__main__":
