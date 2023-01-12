@@ -7,6 +7,9 @@ create-profile:
    profile-name:
      type: string
      description: the name of the new profile to be created
+   resource-quota:
+     type: string
+     description: (Optional) resource quota for the new profile
 
 initialise-profile:
   description: Apply configuration to an existing profile

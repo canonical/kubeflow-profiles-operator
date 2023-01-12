@@ -28,7 +28,6 @@ NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
 PROFILE_CONFIG_FILES = [
     "src/templates/allow-minio.yaml",
     "src/templates/allow-mlflow.yaml",
-    "src/templates/seldon-mlflow.yaml",
 ]
 
 
@@ -324,18 +323,30 @@ class KubeflowProfilesOperator(CharmBase):
         """Handle the action to create a new profile."""
         auth_username = event.params.get("auth-username")
         profile_name = event.params.get("profile-name")
-        self._create_profile(auth_username, profile_name)
+        resource_quota = event.params.get("resource-quota")
+        self._create_profile(auth_username, profile_name, resource_quota)
 
-    def _create_profile(self, auth_username, profile_name):
+    def _create_profile(self, auth_username, profile_name, resource_quota):
         """Create new profile object."""
-        Profile = create_global_resource(
+        profile = create_global_resource(
             group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
         )
-        my_profile = Profile(
+        try:
+            object = self.k8s_resource_handler.lightkube_client.get(
+                profile, name=profile_name, namespace=self._namespace
+            )
+            if object:
+                self.log.warning(f"profile with name:{profile_name} already exists.")
+                return
+        except ApiError as e:
+            self.log.info(e)
+        # TODO add resource quota to spec
+        my_profile = profile(
             metadata={"name": profile_name},
             spec={"owner": {"kind": "User", "name": auth_username}},
         )
         self.k8s_resource_handler.lightkube_client.create(my_profile)
+        # TODO wait for namespace to be created
         self._configure_profile(profile_name)
 
     def _configure_profile(self, profile_name):
