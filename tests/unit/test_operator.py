@@ -1,18 +1,18 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 """Unit tests. Harness and Mocks are defined in test_operator_fixtures.py."""
-from ops.model import ActiveStatus, WaitingStatus
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from ops.charm import ActionEvent
-from lightkube.generic_resource import create_global_resource
-from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH
+from ops.model import ActiveStatus, WaitingStatus
+
+from charm import KubeflowProfilesOperator
 
 from .test_operator_fixtures import (  # noqa F401
     harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 )
-from charm import KubeflowProfilesOperator
 
 
 def test_not_leader(
@@ -128,7 +128,8 @@ def test_kfam_pebble_layer(
         '""'
     )
 
-@patch.object(KubeflowProfilesOperator,'create_profile')
+
+@patch.object(KubeflowProfilesOperator, "create_profile")
 def test_on_create_profile_action(
     create_profile,
     harness,  # noqa F811
@@ -142,13 +143,13 @@ def test_on_create_profile_action(
 
     auth_username = "admin"
     profile_name = "username"
-    resource_quota="resourcequota"
+    resource_quota = "resourcequota"
     event = MagicMock(spec=ActionEvent)
     event.params = {
         "auth_username": auth_username,
         "profile_name": profile_name,
-        "resource_quota":resource_quota
+        "resource_quota": resource_quota,
     }
     harness.charm.on_create_profile_action(event)
 
-    create_profile.assert_called_with(auth_username,profile_name,resource_quota)
+    create_profile.assert_called_with(auth_username, profile_name, resource_quota)

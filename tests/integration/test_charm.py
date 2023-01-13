@@ -73,13 +73,19 @@ async def test_health_check_kfam(ops_test):
     result = requests.get(f"http://{profiles_url}:8081/metrics")
     assert result.status_code == 200
 
+
 async def test_create_profile_action(ops_test):
     """Test profile creation action."""
-    auth_username="admin"
-    profile_name="username"
-    action = await ops_test.model.applications[CHARM_NAME].units[0].run_action('create-profile',auth_username=auth_username,profile_name=profile_name)
+    auth_username = "admin"
+    profile_name = "username"
+    action = (
+        await ops_test.model.applications[CHARM_NAME]
+        .units[0]
+        .run_action("create-profile", auth_username=auth_username, profile_name=profile_name)
+    )
     await action.wait()
-    validate_profile_namespace(lightkube_client, profile_name)
+    validate_profile_namespace(lightkube_client(), profile_name)
+
 
 # Helpers
 @pytest.fixture(scope="session")
@@ -209,6 +215,7 @@ def validate_profile_namespace(
     Retries multiple times using tenacity to allow time for profile-controller to create the
     namespace
     """
+
     # Get required labels
     namespace_label_file = Path(namespace_label_file)
     namespace_labels = yaml.safe_load(namespace_label_file.read_text())
