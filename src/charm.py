@@ -77,7 +77,7 @@ class KubeflowProfilesOperator(CharmBase):
             self.on.kubeflow_profiles_pebble_ready, self._on_kubeflow_profiles_ready
         )
         self.framework.observe(self.on.kubeflow_kfam_pebble_ready, self._on_kfam_ready)
-        self.framework.observe(self.on.create_profile_action, self._on_create_profile_action)
+        self.framework.observe(self.on.create_profile_action, self.on_create_profile_action)
 
     @property
     def profiles_container(self):
@@ -319,14 +319,14 @@ class KubeflowProfilesOperator(CharmBase):
             raise CheckFailed(err, BlockedStatus)
         return interfaces
 
-    def _on_create_profile_action(self, event: ActionEvent) -> None:
+    def on_create_profile_action(self, event: ActionEvent) -> None:
         """Handle the action to create a new profile."""
-        auth_username = event.params.get("auth-username")
-        profile_name = event.params.get("profile-name")
-        resource_quota = event.params.get("resource-quota")
-        self._create_profile(auth_username, profile_name, resource_quota)
+        auth_username = event.params.get("auth_username")
+        profile_name = event.params.get("profile_name")
+        resource_quota = event.params.get("resource_quota")
+        self.create_profile(auth_username, profile_name, resource_quota)
 
-    def _create_profile(self, auth_username, profile_name, resource_quota):
+    def create_profile(self, auth_username, profile_name, resource_quota):
         """Create new profile object."""
         profile = create_global_resource(
             group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
