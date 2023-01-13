@@ -84,7 +84,7 @@ async def test_create_profile_action(ops_test):
         .run_action("create-profile", auth_username=auth_username, profile_name=profile_name)
     )
     await action.wait()
-    validate_profile_namespace(lightkube_client(), profile_name)
+    validate_profile_namespace(profile_name)
 
 
 # Helpers
