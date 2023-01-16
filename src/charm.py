@@ -313,6 +313,9 @@ class KubeflowProfilesOperator(CharmBase):
         auth_username = event.params.get("auth_username")
         profile_name = event.params.get("profile_name")
         resource_quota = event.params.get("resource_quota")
+        self.log.info(
+            f"Running action create-profile with parameters auth_username={auth_username}, profile_name={profile_name}, resource_quota={resource_quota}"  # noqa E501
+        )
         self.create_profile(auth_username, profile_name, resource_quota)
 
     def create_profile(self, auth_username, profile_name, resource_quota):
@@ -325,7 +328,9 @@ class KubeflowProfilesOperator(CharmBase):
                 profile, name=profile_name, namespace=self._namespace
             )
             if existing_profile:
-                self.log.warning(f"profile with name:{profile_name} already exists.")
+                self.log.warning(
+                    f"Failed to create profile: profile with name {profile_name} already exists."
+                )
                 return
         except ApiError as e:
             self.log.info(e)
@@ -347,7 +352,12 @@ class KubeflowProfilesOperator(CharmBase):
     def _apply_manifest(self, manifest, namespace=None):
         """Apply manifest to namespace."""
         for obj in codecs.load_all_yaml(manifest):
-            self.k8s_resource_handler.lightkube_client.apply(obj, namespace=namespace)
+            try:
+                self.k8s_resource_handler.lightkube_client.apply(obj, namespace=namespace)
+            except ApiError:
+                self.log.error(
+                    f"Failed to apply manifest: {obj.metadata.name} to namespace: {namespace}"
+                )
 
     def _safe_load_file_to_text(self, filename: str):
         """Return the contents of filename if it is an existing file, else it returns filename."""
