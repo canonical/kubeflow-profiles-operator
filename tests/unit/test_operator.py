@@ -59,20 +59,10 @@ def test_no_relation(
     """Test no relation scenario."""
     harness.set_leader(True)
     harness.add_oci_resource(
-        "profile-image",
-        {
-            "registrypath": "ci-test",
-            "username": "",
-            "password": "",
-        },
+        "profile-image", {"registrypath": "ci-test", "username": "", "password": ""}
     )
     harness.add_oci_resource(
-        "kfam-image",
-        {
-            "registrypath": "ci-test",
-            "username": "",
-            "password": "",
-        },
+        "kfam-image", {"registrypath": "ci-test", "username": "", "password": ""}
     )
     harness.begin_with_initial_hooks()
     assert harness.charm.model.unit.status == ActiveStatus("")
@@ -137,7 +127,6 @@ def test_on_create_profile_action(
     mocked_resource_handler,  # noqa F811
 ):
     """Test that create_profile method is called on create-profile action."""
-
     harness.begin()
     harness.set_leader(True)
 

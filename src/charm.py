@@ -25,10 +25,7 @@ from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, ge
 
 K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
 NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
-PROFILE_CONFIG_FILES = [
-    "src/templates/allow-minio.yaml",
-    "src/templates/allow-mlflow.yaml",
-]
+PROFILE_CONFIG_FILES = ["src/templates/allow-minio.yaml", "src/templates/allow-mlflow.yaml"]
 
 
 class KubeflowProfilesOperator(CharmBase):
@@ -92,10 +89,7 @@ class KubeflowProfilesOperator(CharmBase):
     @property
     def _context(self):
         """Set up the context to be used for updating K8S resources."""
-        context = {
-            "app_name": self.model.app.name,
-            "model_name": self.model.name,
-        }
+        context = {"app_name": self.model.app.name, "model_name": self.model.name}
         return context
 
     @property
@@ -142,7 +136,7 @@ class KubeflowProfilesOperator(CharmBase):
                         "override": "replace",
                         "period": "30s",
                         "http": {"url": "http://localhost:8080/metrics"},
-                    },
+                    }
                 },
             }
         )
@@ -173,7 +167,7 @@ class KubeflowProfilesOperator(CharmBase):
                         "override": "replace",
                         "period": "30s",
                         "http": {"url": "http://localhost:8081/metrics"},
-                    },
+                    }
                 },
             }
         )
@@ -203,9 +197,7 @@ class KubeflowProfilesOperator(CharmBase):
             with open(NAMESPACE_LABELS_FILE, encoding="utf-8") as labels_file:
                 labels = labels_file.read()
             self.profiles_container.push(
-                "/etc/profile-controller/namespace-labels.yaml",
-                labels,
-                make_dirs=True,
+                "/etc/profile-controller/namespace-labels.yaml", labels, make_dirs=True
             )
             self.profiles_container.add_layer(
                 self._profiles_container_name, self._profiles_pebble_layer, combine=True
@@ -243,10 +235,7 @@ class KubeflowProfilesOperator(CharmBase):
             self._check_leader()
             self.unit.status = MaintenanceStatus("Configuring kfam layer")
             update_layer(
-                self._kfam_container_name,
-                self.kfam_container,
-                self._kfam_pebble_layer,
-                self.log,
+                self._kfam_container_name, self.kfam_container, self._kfam_pebble_layer, self.log
             )
         except ErrorWithStatus as error:
             raise error
@@ -332,10 +321,10 @@ class KubeflowProfilesOperator(CharmBase):
             group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
         )
         try:
-            object = self.k8s_resource_handler.lightkube_client.get(
+            existing_profile = self.k8s_resource_handler.lightkube_client.get(
                 profile, name=profile_name, namespace=self._namespace
             )
-            if object:
+            if existing_profile:
                 self.log.warning(f"profile with name:{profile_name} already exists.")
                 return
         except ApiError as e:

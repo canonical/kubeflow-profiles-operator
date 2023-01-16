@@ -27,10 +27,7 @@ async def test_build_and_deploy(ops_test):
     my_charm = await ops_test.build_charm(".")
     kfam_image_path = METADATA["resources"]["kfam-image"]["upstream-source"]
     profile_image_path = METADATA["resources"]["profile-image"]["upstream-source"]
-    resources = {
-        "kfam-image": kfam_image_path,
-        "profile-image": profile_image_path,
-    }
+    resources = {"kfam-image": kfam_image_path, "profile-image": profile_image_path}
 
     await ops_test.model.deploy(my_charm, resources=resources, trust=True)
 
@@ -74,7 +71,7 @@ async def test_health_check_kfam(ops_test):
     assert result.status_code == 200
 
 
-async def test_create_profile_action(ops_test):
+async def test_create_profile_action(lightkube_client, ops_test):
     """Test profile creation action."""
     auth_username = "admin"
     profile_name = "username"
@@ -84,7 +81,7 @@ async def test_create_profile_action(ops_test):
         .run_action("create-profile", auth_username=auth_username, profile_name=profile_name)
     )
     await action.wait()
-    validate_profile_namespace(profile_name)
+    validate_profile_namespace(lightkube_client, profile_name)
 
 
 # Helpers
@@ -132,9 +129,7 @@ def _validate_if_exists(if_exists):
 
 
 def create_all_from_yaml(
-    yaml_file: str,
-    if_exists: [str, None] = None,
-    lightkube_client: lightkube.Client = None,
+    yaml_file: str, if_exists: [str, None] = None, lightkube_client: lightkube.Client = None
 ):
     """Create all k8s resources listed in a YAML file via lightkube.
 
@@ -170,10 +165,7 @@ def create_all_from_yaml(
                     # Not sure what is wrong with this syntax but it wouldn't work
                 elif if_exists == "patch":
                     lightkube_client.patch(
-                        type(obj),
-                        obj.metadata.name,
-                        obj.to_dict(),
-                        patch_type=PatchType.MERGE,
+                        type(obj), obj.metadata.name, obj.to_dict(), patch_type=PatchType.MERGE
                     )
                 else:
                     raise ValueError(
@@ -200,11 +192,7 @@ def delete_all_from_yaml(yaml_file: str, lightkube_client: lightkube.Client = No
         lightkube_client.delete(type(obj), obj.metadata.name)
 
 
-@retry(
-    wait=wait_exponential(multiplier=1, min=1, max=10),
-    stop=stop_after_delay(30),
-    reraise=True,
-)
+@retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_delay(30), reraise=True)
 def validate_profile_namespace(
     client: lightkube.Client,
     profile_name: str,
@@ -215,7 +203,6 @@ def validate_profile_namespace(
     Retries multiple times using tenacity to allow time for profile-controller to create the
     namespace
     """
-
     # Get required labels
     namespace_label_file = Path(namespace_label_file)
     namespace_labels = yaml.safe_load(namespace_label_file.read_text())
