@@ -310,9 +310,9 @@ class KubeflowProfilesOperator(CharmBase):
 
     def on_create_profile_action(self, event: ActionEvent) -> None:
         """Handle the action to create a new profile."""
-        auth_username = event.params.get("auth_username")
-        profile_name = event.params.get("profile_name")
-        resource_quota = event.params.get("resource_quota")
+        auth_username = event.params.get("authusername")
+        profile_name = event.params.get("profilename")
+        resource_quota = event.params.get("resourcequota")
         self.log.info(
             f"Running action create-profile with parameters auth_username={auth_username}, profile_name={profile_name}, resource_quota={resource_quota}"  # noqa E501
         )
@@ -333,7 +333,7 @@ class KubeflowProfilesOperator(CharmBase):
                 )
                 return
         except ApiError as e:
-            self.log.info(e)
+            self.log.info(f"Failed to create profile, error: {str(e)}")
         # TODO add resource quota to spec
         my_profile = profile(
             metadata={"name": profile_name},

@@ -74,11 +74,11 @@ async def test_health_check_kfam(ops_test):
 async def test_create_profile_action(lightkube_client, ops_test):
     """Test profile creation action."""
     auth_username = "admin"
-    profile_name = "username"
+    profile_name = "myname"
     action = (
         await ops_test.model.applications[CHARM_NAME]
         .units[0]
-        .run_action("create-profile", auth_username=auth_username, profile_name=profile_name)
+        .run_action("create-profile", authusername=auth_username, profilename=profile_name)
     )
     await action.wait()
     validate_profile_namespace(lightkube_client, profile_name)
