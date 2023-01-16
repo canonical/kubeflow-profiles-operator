@@ -135,9 +135,9 @@ def test_on_create_profile_action(
     resource_quota = "resourcequota"
     event = MagicMock(spec=ActionEvent)
     event.params = {
-        "auth_username": auth_username,
-        "profile_name": profile_name,
-        "resource_quota": resource_quota,
+        "authusername": auth_username,
+        "profilename": profile_name,
+        "resourcequota": resource_quota,
     }
     harness.charm.on_create_profile_action(event)
 
