@@ -1,6 +1,7 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 """Integration tests for Kueflow Profiles Operator."""
+import json
 import logging
 from pathlib import Path
 
@@ -73,15 +74,35 @@ async def test_health_check_kfam(ops_test):
 
 async def test_create_profile_action(lightkube_client, ops_test):
     """Test profile creation action."""
+    namespace = ops_test.model_name
     auth_username = "admin"
     profile_name = "myname"
+    resource_quota = """
+    {
+    "hard": {
+        "cpu": "2",
+        "memory": "2Gi",
+        "requests.nvidia.com/gpu": "1",
+        "persistentvolumeclaims": "1",
+        "requests.storage": "5Gi"
+                }
+        }
+    """
+    expected_quota = json.loads(resource_quota)
     action = (
         await ops_test.model.applications[CHARM_NAME]
         .units[0]
-        .run_action("create-profile", authusername=auth_username, profilename=profile_name)
+        .run_action(
+            "create-profile",
+            authusername=auth_username,
+            profilename=profile_name,
+            resourcequota=resource_quota,
+        )
     )
     await action.wait()
     validate_profile_namespace(lightkube_client, profile_name)
+    validate_profile_owner(lightkube_client, namespace, profile_name, auth_username)
+    validate_profile_resource_quota(lightkube_client, namespace, profile_name, expected_quota)
 
 
 # Helpers
@@ -218,3 +239,32 @@ def validate_profile_namespace(
             f"Label '{name}' on Profile's Namespace has value '{actual_value}', "
             f"expected '{expected_value}'"
         )
+
+
+@retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_delay(30), reraise=True)
+def validate_profile_owner(
+    client: lightkube.Client, namespace, profile_name: str, expected_name: str
+):
+    """Validate that the Profile owner has the expected name and kind."""
+    profile_class = create_global_resource(
+        group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
+    )
+    owner = client.get(profile_class, name=profile_name, namespace=namespace).spec["owner"]
+    owner_name = owner["name"]
+    owner_kind = owner["kind"]
+    assert owner_name == expected_name
+    assert owner_kind == "User"
+
+
+@retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_delay(30), reraise=True)
+def validate_profile_resource_quota(
+    client: lightkube.Client, namespace, profile_name: str, expected_quota: str
+):
+    """Validate that the Profile has the expected ResourceQuota."""
+    profile_class = create_global_resource(
+        group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
+    )
+    quota = client.get(profile_class, name=profile_name, namespace=namespace).spec[
+        "resourceQuotaSpec"
+    ]
+    assert quota == expected_quota

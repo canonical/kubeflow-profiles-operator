@@ -1,6 +1,7 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 """Unit tests. Harness and Mocks are defined in test_operator_fixtures.py."""
+import json
 from unittest.mock import MagicMock, patch
 
 from ops.charm import ActionEvent
@@ -132,7 +133,18 @@ def test_on_create_profile_action(
 
     auth_username = "admin"
     profile_name = "username"
-    resource_quota = "resourcequota"
+    resource_quota = """
+    {
+    "hard": {
+        "cpu": "2",
+        "memory": "2Gi",
+        "requests.nvidia.com/gpu": "1",
+        "persistentvolumeclaims": "1",
+        "requests.storage": "5Gi"
+                }
+        }
+    """
+    formatted_quota = json.loads(resource_quota)
     event = MagicMock(spec=ActionEvent)
     event.params = {
         "authusername": auth_username,
@@ -141,4 +153,4 @@ def test_on_create_profile_action(
     }
     harness.charm.on_create_profile_action(event)
 
-    create_profile.assert_called_with(auth_username, profile_name, resource_quota)
+    create_profile.assert_called_with(auth_username, profile_name, formatted_quota)

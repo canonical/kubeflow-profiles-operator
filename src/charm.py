@@ -4,6 +4,7 @@
 
 """A Juju Charm for Kubeflow Profiles Operator."""
 
+import json
 import logging
 import traceback
 from pathlib import Path
@@ -316,7 +317,11 @@ class KubeflowProfilesOperator(CharmBase):
         self.log.info(
             f"Running action create-profile with parameters auth_username={auth_username}, profile_name={profile_name}, resource_quota={resource_quota}"  # noqa E501
         )
-        self.create_profile(auth_username, profile_name, resource_quota)
+        quota_dict = None
+        if resource_quota:
+            quota_dict = self._load_text_to_dict(resource_quota)
+        self.log.info(f"RQ here {quota_dict}, {type(quota_dict)}")
+        self.create_profile(auth_username, profile_name, quota_dict)
 
     def create_profile(self, auth_username, profile_name, resource_quota):
         """Create new profile object."""
@@ -335,13 +340,20 @@ class KubeflowProfilesOperator(CharmBase):
         except ApiError as e:
             self.log.info(f"Failed to create profile, error: {str(e)}")
         # TODO add resource quota to spec
+        # quota_dict=self._load_text_to_json(resource_quota)
         my_profile = profile(
             metadata={"name": profile_name},
-            spec={"owner": {"kind": "User", "name": auth_username}},
+            spec={
+                "owner": {"kind": "User", "name": auth_username},
+                "resourceQuotaSpec": resource_quota,
+            },
         )
         self.k8s_resource_handler.lightkube_client.create(my_profile)
         # TODO wait for namespace to be created
         self._configure_profile(profile_name)
+
+    def _load_text_to_dict(self, text):
+        return json.loads(text)
 
     def _configure_profile(self, profile_name):
         """Add missing configurations to profile."""
