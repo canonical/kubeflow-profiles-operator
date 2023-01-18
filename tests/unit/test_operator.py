@@ -1,7 +1,12 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 """Unit tests. Harness and Mocks are defined in test_operator_fixtures.py."""
+from unittest.mock import MagicMock, patch
+
+from ops.charm import ActionEvent
 from ops.model import ActiveStatus, WaitingStatus
+
+from charm import KubeflowProfilesOperator
 
 from .test_operator_fixtures import (  # noqa F401
     harness,
@@ -54,20 +59,10 @@ def test_no_relation(
     """Test no relation scenario."""
     harness.set_leader(True)
     harness.add_oci_resource(
-        "profile-image",
-        {
-            "registrypath": "ci-test",
-            "username": "",
-            "password": "",
-        },
+        "profile-image", {"registrypath": "ci-test", "username": "", "password": ""}
     )
     harness.add_oci_resource(
-        "kfam-image",
-        {
-            "registrypath": "ci-test",
-            "username": "",
-            "password": "",
-        },
+        "kfam-image", {"registrypath": "ci-test", "username": "", "password": ""}
     )
     harness.begin_with_initial_hooks()
     assert harness.charm.model.unit.status == ActiveStatus("")
@@ -122,3 +117,28 @@ def test_kfam_pebble_layer(
         "-userid-prefix "
         '""'
     )
+
+
+@patch.object(KubeflowProfilesOperator, "create_profile")
+def test_on_create_profile_action(
+    create_profile,
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test that create_profile method is called on create-profile action."""
+    harness.begin()
+    harness.set_leader(True)
+
+    auth_username = "admin"
+    profile_name = "username"
+    resource_quota = "resourcequota"
+    event = MagicMock(spec=ActionEvent)
+    event.params = {
+        "authusername": auth_username,
+        "profilename": profile_name,
+        "resourcequota": resource_quota,
+    }
+    harness.charm.on_create_profile_action(event)
+
+    create_profile.assert_called_with(auth_username, profile_name, resource_quota)
