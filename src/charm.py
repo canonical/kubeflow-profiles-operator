@@ -17,12 +17,14 @@ from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServ
 from lightkube import ApiError, codecs
 from lightkube.generic_resource import create_global_resource, load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
+from lightkube.resources.core_v1 import Namespace, Secret
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
+from tenacity import RetryError, Retrying, stop_after_attempt, stop_after_delay, wait_exponential
 
 K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
 NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
@@ -76,6 +78,9 @@ class KubeflowProfilesOperator(CharmBase):
         )
         self.framework.observe(self.on.kubeflow_kfam_pebble_ready, self._on_kfam_ready)
         self.framework.observe(self.on.create_profile_action, self.on_create_profile_action)
+        self.framework.observe(
+            self.on.initialise_profile_action, self._on_initialise_profile_action
+        )
 
     @property
     def profiles_container(self):
@@ -309,6 +314,21 @@ class KubeflowProfilesOperator(CharmBase):
             raise CheckFailed(err, BlockedStatus)
         return interfaces
 
+    def _on_initialise_profile_action(self, event: ActionEvent) -> None:
+        """Handle the action to initialise an existing profile."""
+        profile_name = event.params.get("profilename")
+        profile = create_global_resource(
+            group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
+        )
+        try:
+            self.k8s_resource_handler.lightkube_client.get(
+                profile, name=profile_name, namespace=self._namespace
+            )
+        except ApiError as e:
+            self.log.error(f"Profile doesn't exist, failed to initialise. Error: {str(e)}")
+            return
+        self._configure_profile(profile_name)
+
     def on_create_profile_action(self, event: ActionEvent) -> None:
         """Handle the action to create a new profile."""
         auth_username = event.params.get("authusername")
@@ -317,17 +337,17 @@ class KubeflowProfilesOperator(CharmBase):
         self.log.info(
             f"Running action create-profile with parameters auth_username={auth_username}, profile_name={profile_name}, resource_quota={resource_quota}"  # noqa E501
         )
-        quota_dict = None
-        if resource_quota:
-            quota_dict = self._load_text_to_dict(resource_quota)
-        self.log.info(f"RQ here {quota_dict}, {type(quota_dict)}")
-        self.create_profile(auth_username, profile_name, quota_dict)
+        self.create_profile(auth_username, profile_name, resource_quota)
 
     def create_profile(self, auth_username, profile_name, resource_quota):
         """Create new profile object."""
+        formatted_quota = None
+        if resource_quota:
+            formatted_quota = self._load_text_to_dict(resource_quota)  # preprocess resource quota
         profile = create_global_resource(
             group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
         )
+        # check if profile already exists
         try:
             existing_profile = self.k8s_resource_handler.lightkube_client.get(
                 profile, name=profile_name, namespace=self._namespace
@@ -338,18 +358,30 @@ class KubeflowProfilesOperator(CharmBase):
                 )
                 return
         except ApiError as e:
-            self.log.info(f"Failed to create profile, error: {str(e)}")
-        # TODO add resource quota to spec
-        # quota_dict=self._load_text_to_json(resource_quota)
+            self.log.info(
+                f"Profile doesn't exist, action will proceed to create profile. Error: {str(e)}"
+            )
         my_profile = profile(
             metadata={"name": profile_name},
             spec={
                 "owner": {"kind": "User", "name": auth_username},
-                "resourceQuotaSpec": resource_quota,
+                "resourceQuotaSpec": formatted_quota,
             },
         )
         self.k8s_resource_handler.lightkube_client.create(my_profile)
-        # TODO wait for namespace to be created
+        # wait for namespace to be created
+        try:
+            for attempt in Retrying(
+                stop=(stop_after_attempt(5) | stop_after_delay(30)),
+                wait=wait_exponential(multiplier=1, min=5, max=10),
+                reraise=True,
+            ):
+                with attempt:
+                    self.k8s_resource_handler.lightkube_client.get(Namespace, name=profile_name)
+        except RetryError:
+            self.log.error(f"Action failed. namespace {profile_name} was not created")
+            return
+
         self._configure_profile(profile_name)
 
     def _load_text_to_dict(self, text):
@@ -358,8 +390,34 @@ class KubeflowProfilesOperator(CharmBase):
     def _configure_profile(self, profile_name):
         """Add missing configurations to profile."""
         for file in PROFILE_CONFIG_FILES:
+            # TODO figure out which integrations are needed
             yaml_text = self._safe_load_file_to_text(file)
             self._apply_manifest(yaml_text, profile_name)
+        # self._copy_seldon_secret(profile_name)
+
+    def _copy_seldon_secret(self, namespace):
+        """Copy Seldon deployment secret from kubeflow namespace to the profile's namespace."""
+        seldon_secret = None
+        try:
+            seldon_secret = self.k8s_resource_handler.lightkube_client.get(
+                Secret,
+                name="mlflow-server-seldon-init-container-s3-credentials",
+                namespace="kubeflow",
+            )
+        except ApiError as e:
+            self.log.error(f"seldon secret not found in kubeflow namespace. error:{e}")
+
+        if seldon_secret:
+            try:
+                seldon_secret.metadata["name"] = "seldon-init-container-secret"
+                seldon_secret.metadata["namespace"] = namespace
+                self.k8s_resource_handler.lightkube_client.apply(
+                    seldon_secret, namespace=namespace
+                )
+            except ApiError as e:
+                self.log.error(
+                    f"Failed to apply secret {seldon_secret.metadata.name} to namespace {namespace}. error:{e}"  # noqa E501
+                )
 
     def _apply_manifest(self, manifest, namespace=None):
         """Apply manifest to namespace."""

@@ -14,9 +14,6 @@ create-profile:
 initialise-profile:
   description: Apply configuration to an existing profile
   params:
-   auth-username:
-     type: string
-     description: the username of the existing authenticated user
-   profile-name:
-     type: string
-     description: the name of the new profile to be created
+    profilename:
+      type: string
+      description: the name of the new profile to be created
