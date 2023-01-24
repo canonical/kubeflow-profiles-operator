@@ -149,8 +149,28 @@ def test_on_create_profile_action(
     event.params = {
         "authusername": auth_username,
         "profilename": profile_name,
-        "resourcequota": resource_quota,
+        "resourcequota": formatted_quota,
     }
     harness.charm.on_create_profile_action(event)
 
     create_profile.assert_called_with(auth_username, profile_name, formatted_quota)
+
+
+@patch.object(KubeflowProfilesOperator, "configure_profile")
+def test_on_initialise_profile_action(
+    configure_profile,
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test that configure_profile method is called on initialise-profile action."""
+    harness.begin()
+    harness.set_leader(True)
+    event = MagicMock(spec=ActionEvent)
+    profile_name = "username"
+    event.params = {
+        "profilename": profile_name,
+    }
+    harness.charm.on_initialise_profile_action(event)
+
+    configure_profile.assert_called_with(profile_name)
