@@ -33,3 +33,10 @@ def mocked_resource_handler(mocker):
     mocked_resource_handler = mocker.patch("charm.KRH")
     mocked_resource_handler.return_value = MagicMock()
     yield mocked_resource_handler
+
+
+@pytest.fixture()
+def mocked_lightkube_client(mocker, mocked_resource_handler):
+    """Prevents lightkube clients from being created, returning a mock instead."""
+    mocked_resource_handler.lightkube_client = MagicMock()
+    yield mocked_resource_handler.lightkube_client

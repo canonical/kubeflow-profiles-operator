@@ -6,3 +6,4 @@ oci-image
 serialized-data-interface
 lightkube
 charmed-kubeflow-chisme
+tenacity
