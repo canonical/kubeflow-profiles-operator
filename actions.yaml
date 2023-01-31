@@ -10,6 +10,7 @@ create-profile:
     resourcequota:
       type: string
       description: (Optional) resource quota for the new profile
+  required: [authusername, profilename]
 
 initialise-profile:
   description: Apply configuration to an existing profile
@@ -17,3 +18,4 @@ initialise-profile:
     profilename:
       type: string
       description: the name of the new profile to be created
+  required: [profilename]

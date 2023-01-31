@@ -427,7 +427,7 @@ class KubeflowProfilesOperator(CharmBase):
                 self.k8s_resource_handler.lightkube_client.apply(obj, namespace=namespace)
             except ApiError as e:
                 self.log.error(
-                    f"Failed to apply manifest: {obj.metadata.name} to namespace: {namespace}. Error: {e}"
+                    f"Failed to apply manifest: {obj.metadata.name} to namespace: {namespace}. Error: {e}"  # noqa E501
                 )
 
     def _safe_load_file_to_text(self, filename: str):
