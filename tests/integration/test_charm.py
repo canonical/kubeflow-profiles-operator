@@ -106,6 +106,23 @@ async def test_create_profile_action(lightkube_client, ops_test):
     validate_namespace_poddefaults(lightkube_client, profile_name)
 
 
+async def test_initialise_profile_action(lightkube_client, profile, ops_test):
+    """Test profile initialisation action."""
+    profile_name = profile
+
+    action = (
+        await ops_test.model.applications[CHARM_NAME]
+        .units[0]
+        .run_action(
+            "initialise-profile",
+            profilename=profile_name,
+        )
+    )
+    await action.wait()
+
+    validate_namespace_poddefaults(lightkube_client, profile_name)
+
+
 # Helpers
 @pytest.fixture(scope="session")
 def lightkube_client() -> lightkube.Client:
@@ -124,7 +141,7 @@ def _safe_load_file_to_text(filename: str):
     return text
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def profile(lightkube_client):
     """Create a Profile object in cluster, cleaning it up after."""
     profile_file = "./tests/integration/profile.yaml"
