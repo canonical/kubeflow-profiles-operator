@@ -401,7 +401,7 @@ class KubeflowProfilesOperator(CharmBase):
                 namespace="kubeflow",
             )
         except ApiError as e:
-            self.log.error(f"seldon secret not found in kubeflow namespace. error:{e}")
+            self.log.warning(f"seldon secret not found in kubeflow namespace. error:{e}")
 
         if seldon_secret:
             try:

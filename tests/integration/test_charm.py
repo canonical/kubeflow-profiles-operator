@@ -10,7 +10,7 @@ import pytest
 import requests
 import yaml
 from lightkube import codecs
-from lightkube.generic_resource import create_global_resource
+from lightkube.generic_resource import create_global_resource, create_namespaced_resource
 from lightkube.resources.core_v1 import Namespace
 from lightkube.types import PatchType
 from tenacity import retry, stop_after_delay, wait_exponential
@@ -103,6 +103,7 @@ async def test_create_profile_action(lightkube_client, ops_test):
     validate_profile_namespace(lightkube_client, profile_name)
     validate_profile_owner(lightkube_client, namespace, profile_name, auth_username)
     validate_profile_resource_quota(lightkube_client, namespace, profile_name, expected_quota)
+    validate_namespace_poddefaults(lightkube_client, profile_name)
 
 
 # Helpers
@@ -268,3 +269,26 @@ def validate_profile_resource_quota(
         "resourceQuotaSpec"
     ]
     assert quota == expected_quota
+
+
+@retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_delay(30), reraise=True)
+def validate_namespace_poddefaults(client: lightkube.Client, namespace):
+    """Validate that a namespace for a profile contains allow-minio and allow-mlflow PodDefaults."""
+    poddefault_class = create_namespaced_resource(
+        group="kubeflow.org", version="v1alpha1", kind="PodDefault", plural="poddefaults"
+    )
+
+    # Load PodDefaults from yaml
+    minio_file = "./src/templates/allow-minio.yaml"
+    minio_yaml_text = _safe_load_file_to_text(minio_file)
+    expected_minio = yaml.safe_load(minio_yaml_text)
+
+    mlflow_file = "./src/templates/allow-mlflow.yaml"
+    mlflow_yaml_text = _safe_load_file_to_text(mlflow_file)
+    expected_mlflow = yaml.safe_load(mlflow_yaml_text)
+
+    minio_poddefault = client.get(poddefault_class, name="access-minio", namespace=namespace)
+    mlflow_poddefault = client.get(poddefault_class, name="access-mlflow", namespace=namespace)
+
+    assert minio_poddefault.spec == expected_minio["spec"]
+    assert mlflow_poddefault.spec == expected_mlflow["spec"]
