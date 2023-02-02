@@ -401,7 +401,7 @@ class KubeflowProfilesOperator(CharmBase):
                 namespace="kubeflow",
             )
         except ApiError as e:
-            self.log.error(f"seldon secret not found in kubeflow namespace. error:{e}")
+            self.log.warning(f"seldon secret not found in kubeflow namespace. error:{e}")
 
         if seldon_secret:
             try:
@@ -425,9 +425,9 @@ class KubeflowProfilesOperator(CharmBase):
         for obj in codecs.load_all_yaml(manifest):
             try:
                 self.k8s_resource_handler.lightkube_client.apply(obj, namespace=namespace)
-            except ApiError:
+            except ApiError as e:
                 self.log.error(
-                    f"Failed to apply manifest: {obj.metadata.name} to namespace: {namespace}"
+                    f"Failed to apply manifest: {obj.metadata.name} to namespace: {namespace}. Error: {e}"  # noqa E501
                 )
 
     def _safe_load_file_to_text(self, filename: str):
