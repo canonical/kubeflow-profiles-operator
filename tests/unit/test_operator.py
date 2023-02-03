@@ -71,7 +71,8 @@ def test_no_relation(
     harness.begin_with_initial_hooks()
     assert harness.charm.model.unit.status == ActiveStatus("")
 
-def test_different_events_sequence_scenario(
+
+def test_kfam_pebble_ready_first_scenario(
     harness,  # noqa F811
     mocked_kubernetes_service_patcher,  # noqa F811
     mocked_resource_handler,  # noqa F811
@@ -83,6 +84,35 @@ def test_different_events_sequence_scenario(
     harness.charm.on.install.emit()
     harness.container_pebble_ready("kubeflow-profiles")
     assert harness.charm.model.unit.status == ActiveStatus("")
+
+
+def test_profiles_pebble_ready_first_scenario(
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test profiles pebble ready then install then kfam pebble ready reach Active."""
+    harness.set_leader(True)
+    harness.begin()
+    harness.container_pebble_ready("kubeflow-profiles")
+    harness.charm.on.install.emit()
+    harness.container_pebble_ready("kubeflow-kfam")
+    assert harness.charm.model.unit.status == ActiveStatus("")
+
+
+def test_install_first_scenario(
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test install then kfam pebble ready then profiles pebble ready reach Active."""
+    harness.set_leader(True)
+    harness.begin()
+    harness.charm.on.install.emit()
+    harness.container_pebble_ready("kubeflow-kfam")
+    harness.container_pebble_ready("kubeflow-profiles")
+    assert harness.charm.model.unit.status == ActiveStatus("")
+
 
 def test_profiles_pebble_layer(
     harness,  # noqa F811
