@@ -63,13 +63,6 @@ class KubeflowProfilesOperator(CharmBase):
         self._lightkube_field_manager = "lightkube"
         self._k8s_resource_handler = None
 
-        # setup events to be handled by main event handler
-        self.framework.observe(self.on.upgrade_charm, self._on_event)
-        self.framework.observe(self.on.config_changed, self._on_event)
-
-        for rel in self.model.relations.keys():
-            self.framework.observe(self.on[rel].relation_changed, self._on_event)
-
         # setup events to be handled by specific event handlers
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.remove, self._on_remove)
@@ -82,6 +75,13 @@ class KubeflowProfilesOperator(CharmBase):
         self.framework.observe(
             self.on.initialise_profile_action, self.on_initialise_profile_action
         )
+
+        # setup events to be handled by main event handler
+        self.framework.observe(self.on.upgrade_charm, self._on_event)
+        self.framework.observe(self.on.config_changed, self._on_event)
+
+        for rel in self.model.relations.keys():
+            self.framework.observe(self.on[rel].relation_changed, self._on_event)
 
     @property
     def profiles_container(self):
