@@ -63,21 +63,21 @@ class KubeflowProfilesOperator(CharmBase):
         self._lightkube_field_manager = "lightkube"
         self._k8s_resource_handler = None
 
-        self.framework.observe(self.on.config_changed, self.service_patcher._patch)
-        self.framework.observe(self.on.remove, self._on_remove)
+        # setup events to be handled by main event handler
+        self.framework.observe(self.on.upgrade_charm, self._on_event)
+        self.framework.observe(self.on.config_changed, self._on_event)
 
-        for event in [
-            self.on.install,
-            self.on.leader_elected,
-            self.on.upgrade_charm,
-            self.on["kubeflow-profiles"].relation_changed,
-            self.on.config_changed,
-        ]:
-            self.framework.observe(event, self.main)
+        for rel in self.model.relations.keys():
+            self.framework.observe(self.on[rel].relation_changed, self._on_event)
+
+        # setup events to be handled by specific event handlers
+        self.framework.observe(self.on.install, self._on_install)
+        self.framework.observe(self.on.remove, self._on_remove)
+        self.framework.observe(self.on.config_changed, self.service_patcher._patch)
         self.framework.observe(
-            self.on.kubeflow_profiles_pebble_ready, self._on_kubeflow_profiles_ready
+            self.on.kubeflow_profiles_pebble_ready, self._on_profiles_pebble_ready
         )
-        self.framework.observe(self.on.kubeflow_kfam_pebble_ready, self._on_kfam_ready)
+        self.framework.observe(self.on.kubeflow_kfam_pebble_ready, self._on_kfam_pebble_ready)
         self.framework.observe(self.on.create_profile_action, self.on_create_profile_action)
         self.framework.observe(
             self.on.initialise_profile_action, self.on_initialise_profile_action
@@ -189,6 +189,11 @@ class KubeflowProfilesOperator(CharmBase):
             raise ErrorWithStatus("K8S resources creation failed", BlockedStatus)
         self.model.unit.status = MaintenanceStatus("K8S resources created")
 
+    def _on_install(self, _):
+        """Installation only tasks."""
+        # deploy K8S resources to speed up deployment
+        self._deploy_k8s_resources()
+
     def _update_profiles_layer(self) -> None:
         """Update the Profile Pebble layer if changed.
 
@@ -201,11 +206,7 @@ class KubeflowProfilesOperator(CharmBase):
         current_layer = self.profiles_container.get_plan()
 
         if current_layer.services != self._profiles_pebble_layer.services:
-            with open(NAMESPACE_LABELS_FILE, encoding="utf-8") as labels_file:
-                labels = labels_file.read()
-            self.profiles_container.push(
-                "/etc/profile-controller/namespace-labels.yaml", labels, make_dirs=True
-            )
+            self._push_namespace_labels()
             self.profiles_container.add_layer(
                 self._profiles_container_name, self._profiles_pebble_layer, combine=True
             )
@@ -216,61 +217,28 @@ class KubeflowProfilesOperator(CharmBase):
                 self.log.error(traceback.format_exc())
                 raise ErrorWithStatus("Failed to replan", BlockedStatus)
 
-    def _update_profiles_container(self, event) -> None:
-        """Check leader and call the update profiles layer method."""
-        if not self.profiles_container.can_connect():
-            self.unit.status = WaitingStatus("Waiting to connect to Profiles container")
-            event.defer()
-            return
-
-        try:
-            self._check_leader()
-            self.unit.status = MaintenanceStatus("Configuring Profiles layer")
-            self._update_profiles_layer()
-        except ErrorWithStatus as error:
-            raise error
-        self.unit.status = MaintenanceStatus("Profiles layer configured")
-
-    def _update_kfam_container(self, event) -> None:
-        """Update the kfam Pebble configuration layer if changed."""
-        if not self.profiles_container.can_connect():
-            self.unit.status = WaitingStatus("Waiting to connect to kfam container")
-            event.defer()
-            return
-
-        try:
-            self._check_leader()
-            self.unit.status = MaintenanceStatus("Configuring kfam layer")
-            update_layer(
-                self._kfam_container_name, self.kfam_container, self._kfam_pebble_layer, self.log
-            )
-        except ErrorWithStatus as error:
-            raise error
-        self.unit.status = MaintenanceStatus("kfam layer configured")
-
-    def _on_kubeflow_profiles_ready(self, event):
+    def _on_profiles_pebble_ready(self, event):
         """Update the started Profiles container."""
-        try:
-            self._update_profiles_container(event)
+        if not self.profiles_container.can_connect():
+            raise ErrorWithStatus(
+                "Profiles Pebble is ready and container is not ready", BlockedStatus
+            )
 
-        except ErrorWithStatus as e:
-            self.model.unit.status = e.status
-            if isinstance(e.status, BlockedStatus):
-                self.log.error(str(e.msg))
-            else:
-                self.log.info(str(e.msg))
+        self._on_event(event)
 
-    def _on_kfam_ready(self, event):
+    def _push_namespace_labels(self):
+        """Push namespace labels to Profile container."""
+        with open(NAMESPACE_LABELS_FILE, encoding="utf-8") as labels_file:
+            labels = labels_file.read()
+        self.profiles_container.push(
+            "/etc/profile-controller/namespace-labels.yaml", labels, make_dirs=True
+        )
+
+    def _on_kfam_pebble_ready(self, event):
         """Update the started kfam container."""
-        try:
-            self._update_kfam_container(event)
-
-        except ErrorWithStatus as e:
-            self.model.unit.status = e.status
-            if isinstance(e.status, BlockedStatus):
-                self.log.error(str(e.msg))
-            else:
-                self.log.info(str(e.msg))
+        if not self.kfam_container.can_connect():
+            raise ErrorWithStatus("kfam Pebble is ready and container is not ready", BlockedStatus)
+        self._on_event(event)
 
     def _on_remove(self, event):
         """Remove all resources."""
@@ -300,19 +268,14 @@ class KubeflowProfilesOperator(CharmBase):
             self.log.info("Not a leader, skipping setup")
             raise ErrorWithStatus("Waiting for leadership", WaitingStatus)
 
-    def _check_container_connection(self, container):
-        """Check if connection can be made with container."""
-        if not container.can_connect():
-            raise ErrorWithStatus("Pod startup is not complete", MaintenanceStatus)
-
     def _get_interfaces(self):
         """Retrieve interface object."""
         try:
             interfaces = get_interfaces(self)
         except NoVersionsListed as err:
-            raise CheckFailed(err, WaitingStatus)
+            raise ErrorWithStatus(err, WaitingStatus)
         except NoCompatibleVersions as err:
-            raise CheckFailed(err, BlockedStatus)
+            raise ErrorWithStatus(err, BlockedStatus)
         return interfaces
 
     def on_initialise_profile_action(self, event: ActionEvent) -> None:
@@ -438,19 +401,21 @@ class KubeflowProfilesOperator(CharmBase):
             text = filename
         return text
 
-    def main(self, event):
+    def _on_event(self, event) -> None:
         """Perform all required actions for the Charm."""
         try:
-            self._update_profiles_container(event)
-            self._update_kfam_container(event)
-            self._deploy_k8s_resources()
+            self._check_leader()
             interfaces = self._get_interfaces()
-
-        except ErrorWithStatus as error:
-            self.model.unit.status = error.status
+            self._send_info(interfaces)
+            self._deploy_k8s_resources()
+            self._update_profiles_layer()
+            update_layer(
+                self._kfam_container_name, self.kfam_container, self._kfam_pebble_layer, self.log
+            )
+        except ErrorWithStatus as err:
+            self.model.unit.status = err.status
+            self.log.info(f"Failed to handle {event} with error: {str(err)}")
             return
-
-        self._send_info(interfaces)
 
         self.model.unit.status = ActiveStatus()
 
