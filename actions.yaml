@@ -1,9 +1,9 @@
 create-profile:
-  description: Create a new profile under an existing user and apply configurations to the profile to allow using Minio, MLFlow, and Seldon.
+  description: Create a new profile under an authenticated user and apply configurations to the profile to allow using Minio, MLFlow, and Seldon.
   params:
     username:
       type: string
-      description: the name of the existing authenticated user under which the new profile will be added
+      description: the name of the authenticated user under which the new profile will be added
     profilename:
       type: string
       description: the name of the new profile to be created
