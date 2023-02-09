@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Secret
+from lightkube.generic_resource import create_global_resource
 from ops.charm import ActionEvent
 from ops.model import ActiveStatus, WaitingStatus
 
@@ -175,10 +176,13 @@ def test_on_create_profile_action(
                 }
         }
     """
+    create_global_resource(
+        group="kubeflow.org", version="v1alpha1", kind="PodDefault", plural="poddefaults"
+    )
     formatted_quota = json.loads(resource_quota)
     event = MagicMock(spec=ActionEvent)
     event.params = {
-        "authusername": auth_username,
+        "username": auth_username,
         "profilename": profile_name,
         "resourcequota": formatted_quota,
     }

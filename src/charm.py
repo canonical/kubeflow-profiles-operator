@@ -285,16 +285,16 @@ class KubeflowProfilesOperator(CharmBase):
 
     def on_create_profile_action(self, event: ActionEvent) -> None:
         """Handle the action to create a new profile."""
-        auth_username = event.params.get("authusername")
+        username = event.params.get("username")
         profile_name = event.params.get("profilename")
         resource_quota = event.params.get("resourcequota")
         self.log.info(
-            f"Running action create-profile with parameters auth_username={auth_username}, profile_name={profile_name}, resource_quota={resource_quota}"  # noqa E501
+            f"Running action create-profile with parameters username={username}, profile_name={profile_name}, resource_quota={resource_quota}"  # noqa E501
         )
-        self.create_profile(auth_username, profile_name, resource_quota)
+        self.create_profile(username, profile_name, resource_quota)
         self.configure_profile(profile_name)
 
-    def create_profile(self, auth_username, profile_name, resource_quota):
+    def create_profile(self, username, profile_name, resource_quota):
         """Create new profile object."""
         formatted_quota = None
         if resource_quota:
@@ -319,7 +319,7 @@ class KubeflowProfilesOperator(CharmBase):
         my_profile = profile(
             metadata={"name": profile_name},
             spec={
-                "owner": {"kind": "User", "name": auth_username},
+                "owner": {"kind": "User", "name": username},
                 "resourceQuotaSpec": formatted_quota,
             },
         )
@@ -332,9 +332,6 @@ class KubeflowProfilesOperator(CharmBase):
         """Add missing configurations to profile."""
         create_global_resource(
             group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
-        )
-        create_global_resource(
-            group="kubeflow.org", version="v1alpha1", kind="PodDefault", plural="poddefaults"
         )
         # attempt to get namespace
         try:
