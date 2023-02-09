@@ -292,6 +292,7 @@ class KubeflowProfilesOperator(CharmBase):
             f"Running action create-profile with parameters auth_username={auth_username}, profile_name={profile_name}, resource_quota={resource_quota}"  # noqa E501
         )
         self.create_profile(auth_username, profile_name, resource_quota)
+        self.configure_profile(profile_name)
 
     def create_profile(self, auth_username, profile_name, resource_quota):
         """Create new profile object."""
@@ -324,8 +325,6 @@ class KubeflowProfilesOperator(CharmBase):
         )
         self.k8s_resource_handler.lightkube_client.create(my_profile)
 
-        self.configure_profile(profile_name)
-
     def _load_text_to_dict(self, text):
         return json.loads(text)
 
@@ -333,6 +332,9 @@ class KubeflowProfilesOperator(CharmBase):
         """Add missing configurations to profile."""
         create_global_resource(
             group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
+        )
+        create_global_resource(
+            group="kubeflow.org", version="v1alpha1", kind="PodDefault", plural="poddefaults"
         )
         # attempt to get namespace
         try:
