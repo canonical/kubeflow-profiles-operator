@@ -84,7 +84,7 @@ async def test_health_check_kfam(ops_test):
 async def test_create_profile_action(lightkube_client, ops_test):
     """Test profile creation action."""
     namespace = ops_test.model_name
-    auth_username = "admin"
+    username = "admin"
     profile_name = "myname"
     resource_quota = """
     {
@@ -103,14 +103,14 @@ async def test_create_profile_action(lightkube_client, ops_test):
         .units[0]
         .run_action(
             "create-profile",
-            authusername=auth_username,
+            username=username,
             profilename=profile_name,
             resourcequota=resource_quota,
         )
     )
     await action.wait()
     validate_profile_namespace(lightkube_client, profile_name)
-    validate_profile_owner(lightkube_client, namespace, profile_name, auth_username)
+    validate_profile_owner(lightkube_client, namespace, profile_name, username)
     validate_profile_resource_quota(lightkube_client, namespace, profile_name, expected_quota)
     validate_namespace_poddefaults(lightkube_client, profile_name)
 
