@@ -18,7 +18,7 @@ TAG=${TAG:-$(eval "cat $REPO_DIR/version.txt")}
 
 echo "Tag: $TAG"
 
-echo "Build Jupyter UI"
+echo "Build KFAM"
 cd $REPO_DIR/components/access-management
 export IMG=kfam
 make docker-build TAG=$TAG
@@ -28,7 +28,7 @@ docker rmi $(docker images --filter=dangling=true -q) 2>/dev/null
 set -e
 cd -
 
-echo "Build Jupyter controller"
+echo "Build Profile controller"
 cd $REPO_DIR/components/profile-controller
 export IMG=profile-controller
 make docker-build TAG=$TAG
