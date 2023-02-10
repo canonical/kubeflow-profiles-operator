@@ -36,11 +36,10 @@ rm -rf ./trivy-reports/
 
 # perform build and scan for each components
 for COMPONENT in "${COMPONENTS_LIST[@]}"; do
-	COMPONENT_DESC=($COMPONENT)
-	cd "$REPO_DIR/${COMPONENT_DESC[0]}"
+	cd "$REPO_DIR/${COMPONENT}"
 
-	echo "Building ${COMPONENT_DESC[0]}${COMPONENT_DESC[1]}"
-	make docker-build${COMPONENT_DESC[1]}
+	echo "Building ${COMPONENT}"
+	make docker-build
 	cd -
 
 	echo "Scanning images with $TAG"
