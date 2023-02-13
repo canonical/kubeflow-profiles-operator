@@ -1,6 +1,9 @@
 name: Build and scan OCI images
 
 on:
+  secrets:
+    jira-token:
+      required: true
   schedule:
   # every day at 1:12AM UTC
   - cron: '12 1 * * *'
@@ -30,5 +33,5 @@ jobs:
         working-directory: image-definitions
       - name: Send vulnerability records
         run: |
-          ./send-scan.sh ./trivy-reports
+          ./send-scan.sh ./trivy-reports "${{ secrets.jira-token }}"
         working-directory: image-definitions
