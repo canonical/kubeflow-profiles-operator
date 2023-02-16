@@ -1,7 +1,3 @@
 Charmed Kubeflow Profiles
 =========================
-
-This charm is part of the Kubeflow bundle. For instructions on how to deploy it,
-see https://charmed-kubeflow.io/docs.
-
-Upstream documentation can be found at https://www.kubeflow.org/docs/components/multi-tenancy/
+Charmed Kubeflow Profiles is the charm for [Kubeflow Multi-Tenancy](https://www.kubeflow.org/docs/components/multi-tenancy/) component. In [Charmed Kubeflow](https://charmed-kubeflow.io/), it is responsible for multi-user isolation and identity access management.

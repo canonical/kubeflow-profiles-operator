@@ -3,6 +3,10 @@
 name: kubeflow-profiles
 summary: Kubeflow Profiles and Access Management
 description: Kubeflow Profiles and Access Management
+website: https://charmhub.io/kubeflow-profiles
+source: https://github.com/canonical/kubeflow-profiles-operator
+issues: https://github.com/canonical/kubeflow-profiles-operator/issues
+docs: https://discourse.charmhub.io/t/charmed-kubeflow-profiles/8232
 containers:
   kubeflow-profiles:
     resource: profile-image
