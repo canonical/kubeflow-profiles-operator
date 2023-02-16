@@ -29,7 +29,7 @@ fi
 echo "Setup image definitions for Kubeflow based on upstream"
 LOCAL_REPO_DIR="kubeflow"
 REMOTE_REPO="https://github.com/kubeflow/kubeflow.git"
-BRANCH=v1.7-branch
+BRANCH=v1.6-branch
 
 echo "Remote repository: $REMOTE_REPO"
 echo "Local directory: $DIR/$LOCAL_REPO_DIR"
