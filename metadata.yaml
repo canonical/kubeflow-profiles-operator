@@ -3,6 +3,10 @@
 name: kubeflow-profiles
 summary: Kubeflow Profiles and Access Management
 description: Kubeflow Profiles and Access Management
+website: https://charmhub.io/kubeflow-profiles
+source: https://github.com/canonical/kubeflow-profiles-operator
+issues: https://github.com/canonical/kubeflow-profiles-operator/issues
+docs: https://discourse.charmhub.io/t/charmed-kubeflow-profiles/8232
 containers:
   kubeflow-profiles:
     resource: profile-image
@@ -13,12 +17,12 @@ resources:
     type: oci-image
     description: Profile controller image
     auto-fetch: true
-    upstream-source: registry.hub.docker.com/charmedkubeflow/profile-controller:v1.6.1
+    upstream-source: docker.io/kubeflownotebookswg/profile-controller:v1.7.0-rc.0
   kfam-image:
     type: oci-image
     description: Access Management image
     auto-fetch: true
-    upstream-source: registry.hub.docker.com/charmedkubeflow/kfam:v1.6.1
+    upstream-source: docker.io/kubeflownotebookswg/kfam:v1.7.0-rc.0
 provides:
   kubeflow-profiles:
     interface: k8s-service
