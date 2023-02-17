@@ -189,6 +189,8 @@ class KubeflowProfilesOperator(CharmBase):
         except httpx.HTTPStatusError as e:
             if e.response.status_code == httpx.codes.CONFLICT:
                 pass
+            else:
+                raise e
         except ApiError:
             raise ErrorWithStatus("K8S resources creation failed", BlockedStatus)
         self.model.unit.status = MaintenanceStatus("K8S resources created")
