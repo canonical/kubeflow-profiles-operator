@@ -9,6 +9,7 @@ import logging
 import traceback
 from pathlib import Path
 
+import httpx
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
@@ -185,6 +186,9 @@ class KubeflowProfilesOperator(CharmBase):
             self.unit.status = MaintenanceStatus("Creating K8S resources")
             self.k8s_resource_handler.apply()
 
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == httpx.codes.CONFLICT:
+                pass
         except ApiError:
             raise ErrorWithStatus("K8S resources creation failed", BlockedStatus)
         self.model.unit.status = MaintenanceStatus("K8S resources created")
