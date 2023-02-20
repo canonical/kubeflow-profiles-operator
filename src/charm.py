@@ -15,7 +15,7 @@ from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH 
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
-from lightkube import ApiError, codecs
+from lightkube import ApiError, codecs, LoadResourceError
 from lightkube.generic_resource import create_global_resource, load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
@@ -346,11 +346,13 @@ class KubeflowProfilesOperator(CharmBase):
         except RetryError:
             self.log.error(f"Action failed. namespace {profile_name} was not created")
             return
-
-        for file in PROFILE_CONFIG_FILES:
-            # TODO figure out which integrations are needed
-            yaml_text = self._safe_load_file_to_text(file)
-            self._apply_manifest(yaml_text, profile_name)
+        try:
+            for file in PROFILE_CONFIG_FILES:
+                # TODO figure out which integrations are needed
+                yaml_text = self._safe_load_file_to_text(file)
+                self._apply_manifest(yaml_text, profile_name)
+        except LoadResourceError as e:
+            self.log.error(f"Failed to apply PodDefaults: CRD not defined. To fix, deploy admission webhook. Error: {e}")   # noqa E501
         self._copy_seldon_secret(profile_name)
 
     def _copy_seldon_secret(self, namespace):
