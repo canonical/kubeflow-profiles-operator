@@ -14,7 +14,7 @@ from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH 
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
-from lightkube import ApiError, codecs, LoadResourceError
+from lightkube import ApiError, LoadResourceError, codecs
 from lightkube.generic_resource import create_global_resource, load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
 from lightkube.models.meta_v1 import ObjectMeta
