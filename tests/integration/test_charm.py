@@ -83,6 +83,9 @@ async def test_health_check_kfam(ops_test):
 
 async def test_create_profile_action(lightkube_client, ops_test):
     """Test profile creation action."""
+    ADMISSION_WEBHOOK_NAME = "admission-webhook"
+    await ops_test.model.deploy(ADMISSION_WEBHOOK_NAME, channel="latest/edge")
+    await ops_test.model.wait_for_idle(apps=[ADMISSION_WEBHOOK_NAME], status="active")
     namespace = ops_test.model_name
     username = "admin"
     profile_name = "myname"
