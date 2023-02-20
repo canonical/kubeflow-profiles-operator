@@ -351,7 +351,9 @@ class KubeflowProfilesOperator(CharmBase):
                 yaml_text = self._safe_load_file_to_text(file)
                 self._apply_manifest(yaml_text, profile_name)
         except LoadResourceError as e:
-            self.log.error(f"Failed to apply PodDefaults: CRD not defined. To fix, deploy admission webhook. Error: {e}")   # noqa E501
+            self.log.error(
+                f"Failed to apply PodDefaults: CRD not defined. To fix, deploy admission webhook. Error: {e}"  # noqa E501
+            )
         self._copy_seldon_secret(profile_name)
 
     def _copy_seldon_secret(self, namespace):
