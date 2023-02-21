@@ -188,7 +188,7 @@ def test_on_create_profile_action(
     }
     harness.charm.on_create_profile_action(event)
 
-    create_profile.assert_called_with(auth_username, profile_name, formatted_quota)
+    create_profile.assert_called_with(auth_username, profile_name, formatted_quota, event)
 
 
 @patch.object(KubeflowProfilesOperator, "configure_profile")
@@ -208,7 +208,7 @@ def test_on_initialise_profile_action(
     }
     harness.charm.on_initialise_profile_action(event)
 
-    configure_profile.assert_called_with(profile_name)
+    configure_profile.assert_called_with(profile_name, event)
 
 
 def test_copy_seldon_secret(
@@ -234,10 +234,11 @@ def test_copy_seldon_secret(
         type="Opaque",
     )
     mocked_lightkube_client.get.return_value = seldon_secret
+    event = MagicMock(spec=ActionEvent)
     harness.begin()
     harness.set_leader(True)
     harness.charm.k8s_resource_handler.lightkube_client = mocked_lightkube_client
-    harness.charm._copy_seldon_secret(profile_name)
+    harness.charm._copy_seldon_secret(profile_name, event)
     harness.charm.k8s_resource_handler.lightkube_client.create.assert_called_with(
         Secret(
             metadata=ObjectMeta(name="seldon-init-container-secret"),

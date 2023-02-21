@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 CHARM_NAME = METADATA["name"]
-
+ADMISSION_WEBHOOK_NAME = "admission-webhook"
 
 @pytest.mark.abort_on_fail
 @pytest.mark.skip_if_deployed
@@ -100,7 +100,6 @@ async def test_create_profile_action_no_poddefaults(lightkube_client, ops_test):
 
 async def test_create_profile_action(lightkube_client, ops_test):
     """Test profile creation action."""
-    ADMISSION_WEBHOOK_NAME = "admission-webhook"
     await ops_test.model.deploy(ADMISSION_WEBHOOK_NAME, channel="latest/edge")
     await ops_test.model.wait_for_idle(apps=[ADMISSION_WEBHOOK_NAME], status="active")
     namespace = ops_test.model_name
