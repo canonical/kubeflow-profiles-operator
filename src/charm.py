@@ -281,7 +281,7 @@ class KubeflowProfilesOperator(CharmBase):
     def on_initialise_profile_action(self, event: ActionEvent) -> None:
         """Handle the action to initialise an existing profile."""
         profile_name = event.params.get("profilename")
-        self.configure_profile(profile_name)
+        self.configure_profile(profile_name, event)
 
     def on_create_profile_action(self, event: ActionEvent) -> None:
         """Handle the action to create a new profile."""
@@ -292,7 +292,7 @@ class KubeflowProfilesOperator(CharmBase):
             f"Running action create-profile with parameters username={username}, profile_name={profile_name}, resource_quota={resource_quota}"  # noqa E501
         )
         self.create_profile(username, profile_name, resource_quota)
-        self.configure_profile(profile_name)
+        self.configure_profile(profile_name, event)
 
     def create_profile(self, username, profile_name, resource_quota):
         """Create new profile object."""
@@ -328,7 +328,7 @@ class KubeflowProfilesOperator(CharmBase):
     def _load_text_to_dict(self, text):
         return json.loads(text)
 
-    def configure_profile(self, profile_name):
+    def configure_profile(self, profile_name, event: ActionEvent):
         """Add missing configurations to profile."""
         create_global_resource(
             group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
@@ -343,7 +343,7 @@ class KubeflowProfilesOperator(CharmBase):
                 with attempt:
                     self.k8s_resource_handler.lightkube_client.get(Namespace, name=profile_name)
         except RetryError:
-            self.log.error(f"Action failed. namespace {profile_name} was not created")
+            event.fail(f"Action failed. namespace {profile_name} was not created")
             return
         try:
             for file in PROFILE_CONFIG_FILES:
@@ -351,7 +351,7 @@ class KubeflowProfilesOperator(CharmBase):
                 yaml_text = self._safe_load_file_to_text(file)
                 self._apply_manifest(yaml_text, profile_name)
         except LoadResourceError as e:
-            self.log.error(
+            event.fail(
                 f"Failed to apply PodDefaults: CRD not defined. To fix, deploy admission webhook. Error: {e}"  # noqa E501
             )
         self._copy_seldon_secret(profile_name)
