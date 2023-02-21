@@ -83,7 +83,12 @@ async def test_health_check_kfam(ops_test):
 
 
 async def test_create_profile_action_no_poddefaults(lightkube_client, ops_test):
-    """Test profile creation action scenario when PodDefault CRD doesn't exist."""
+    """
+    Test failure of create-profile action.
+
+    PodDefault CRD doesn't exist if admission-webhook charm is not deployed causing apply
+    PodDefaults to fail.
+    """
     username = "admin"
     profile_name = "profilex"
     action = (
@@ -100,7 +105,12 @@ async def test_create_profile_action_no_poddefaults(lightkube_client, ops_test):
 
 
 async def test_create_profile_action(lightkube_client, ops_test):
-    """Test profile creation action."""
+    """
+    Test profile creation action.
+
+    Deploy admission-webhook before testing success of the actions to enable applying PodDefaults,
+    PodDefault CRD is part of admission-webhooks's CRDs.
+    """
     await ops_test.model.deploy(ADMISSION_WEBHOOK_NAME, channel="latest/edge")
     await ops_test.model.wait_for_idle(apps=[ADMISSION_WEBHOOK_NAME], status="active")
     namespace = ops_test.model_name
