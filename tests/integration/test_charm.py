@@ -30,6 +30,7 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 CHARM_NAME = METADATA["name"]
 ADMISSION_WEBHOOK_NAME = "admission-webhook"
 
+
 @pytest.mark.abort_on_fail
 @pytest.mark.skip_if_deployed
 async def test_build_and_deploy(ops_test):
