@@ -128,7 +128,8 @@ async def test_create_profile_action(lightkube_client, ops_test):
             resourcequota=resource_quota,
         )
     )
-    await action.wait()
+    action_result = await action.wait()
+    assert action_result.status == "completed"
     validate_profile_namespace(lightkube_client, profile_name)
     validate_profile_owner(lightkube_client, namespace, profile_name, username)
     validate_profile_resource_quota(lightkube_client, namespace, profile_name, expected_quota)
@@ -147,8 +148,8 @@ async def test_initialise_profile_action(lightkube_client, profile, ops_test):
             profilename=profile_name,
         )
     )
-    await action.wait()
-
+    action_result = await action.wait()
+    assert action_result.status == "completed"
     validate_namespace_poddefaults(lightkube_client, profile_name)
 
 
@@ -204,7 +205,7 @@ async def test_initialise_profile_action_copy_seldon_secret(lightkube_client, pr
             profilename=profile,
         )
     )
-    await action.wait()
+    action_result = await action.wait()
 
     # assert secret is copied
     new_secret = lightkube_client.get(
@@ -212,7 +213,7 @@ async def test_initialise_profile_action_copy_seldon_secret(lightkube_client, pr
         name="seldon-init-container-secret",
         namespace=profile,
     )
-
+    assert action_result.status == "completed"
     assert new_secret.data == seldon_secret.data
 
 

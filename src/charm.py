@@ -288,13 +288,13 @@ class KubeflowProfilesOperator(CharmBase):
         username = event.params.get("username")
         profile_name = event.params.get("profilename")
         resource_quota = event.params.get("resourcequota")
-        self.log.info(
+        event.log(
             f"Running action create-profile with parameters username={username}, profile_name={profile_name}, resource_quota={resource_quota}"  # noqa E501
         )
-        self.create_profile(username, profile_name, resource_quota)
+        self.create_profile(username, profile_name, resource_quota, event)
         self.configure_profile(profile_name, event)
 
-    def create_profile(self, username, profile_name, resource_quota):
+    def create_profile(self, username, profile_name, resource_quota, event: ActionEvent):
         """Create new profile object."""
         formatted_quota = None
         if resource_quota:
@@ -308,14 +308,12 @@ class KubeflowProfilesOperator(CharmBase):
                 profile, name=profile_name, namespace=self._namespace
             )
             if existing_profile:
-                self.log.warning(
+                event.fail(
                     f"Failed to create profile: profile with name {profile_name} already exists."
                 )
                 return
-        except ApiError as e:
-            self.log.info(
-                f"Profile doesn't exist, action will proceed to create profile. Error: {str(e)}"
-            )
+        except ApiError:
+            event.log("Profile doesn't exist, action will proceed to create profile.")
         my_profile = profile(
             metadata={"name": profile_name},
             spec={
@@ -324,6 +322,7 @@ class KubeflowProfilesOperator(CharmBase):
             },
         )
         self.k8s_resource_handler.lightkube_client.create(my_profile)
+        event.log(f"Profile {profile_name} created.")
 
     def _load_text_to_dict(self, text):
         return json.loads(text)
@@ -349,14 +348,14 @@ class KubeflowProfilesOperator(CharmBase):
             for file in PROFILE_CONFIG_FILES:
                 # TODO figure out which integrations are needed
                 yaml_text = self._safe_load_file_to_text(file)
-                self._apply_manifest(yaml_text, profile_name)
+                self._apply_manifest(yaml_text, event, profile_name)
         except LoadResourceError as e:
             event.fail(
                 f"Failed to apply PodDefaults: CRD not defined. To fix, deploy admission webhook. Error: {e}"  # noqa E501
             )
-        self._copy_seldon_secret(profile_name)
+        self._copy_seldon_secret(profile_name, event)
 
-    def _copy_seldon_secret(self, namespace):
+    def _copy_seldon_secret(self, namespace, event: ActionEvent):
         """Copy Seldon deployment secret from kubeflow namespace to the profile's namespace."""
         seldon_secret = None
         # check if seldon-core-mlflow integration secret exists in kubeflow namespace
@@ -367,7 +366,7 @@ class KubeflowProfilesOperator(CharmBase):
                 namespace="kubeflow",
             )
         except ApiError as e:
-            self.log.warning(f"seldon secret not found in kubeflow namespace. error:{e}")
+            event.log(f"seldon secret not found in kubeflow namespace. error:{e}")
 
         if seldon_secret:
             try:
@@ -382,17 +381,17 @@ class KubeflowProfilesOperator(CharmBase):
                     namespace=namespace,
                 )
             except ApiError as e:
-                self.log.error(
+                event.log(
                     f"Failed to apply secret {seldon_secret.metadata.name} to namespace {namespace}. error:{e}"  # noqa E501
                 )
 
-    def _apply_manifest(self, manifest, namespace=None):
+    def _apply_manifest(self, manifest, event: ActionEvent, namespace=None):
         """Apply manifest to namespace."""
         for obj in codecs.load_all_yaml(manifest):
             try:
                 self.k8s_resource_handler.lightkube_client.apply(obj, namespace=namespace)
             except ApiError as e:
-                self.log.error(
+                event.log(
                     f"Failed to apply manifest: {obj.metadata.name} to namespace: {namespace}. Error: {e}"  # noqa E501
                 )
 
