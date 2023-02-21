@@ -81,6 +81,23 @@ async def test_health_check_kfam(ops_test):
     assert result.status_code == 200
 
 
+async def test_create_profile_action_no_poddefaults(lightkube_client, ops_test):
+    """Test profile creation action scenario when PodDefault CRD doesn't exist."""
+    username = "admin"
+    profile_name = "profilex"
+    action = (
+        await ops_test.model.applications[CHARM_NAME]
+        .units[0]
+        .run_action(
+            "create-profile",
+            username=username,
+            profilename=profile_name,
+        )
+    )
+    action_result = await action.wait()
+    assert action_result.status == "failed"
+
+
 async def test_create_profile_action(lightkube_client, ops_test):
     """Test profile creation action."""
     ADMISSION_WEBHOOK_NAME = "admission-webhook"
