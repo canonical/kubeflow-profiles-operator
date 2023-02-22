@@ -164,11 +164,11 @@ async def test_initialise_profile_action(lightkube_client, profile, ops_test):
 
 
 async def test_initialise_profile_action_copy_seldon_secret(lightkube_client, profile, ops_test):
-    """Test initialise profile action to copy seldon secret when secret is in kubeflow namespace."""
+    """Test initialise profile action to copy seldon secret when secret is in the namespace."""
     # get the namespace
     namespace_name = ops_test.model.name
 
-    # create seldon secret in kubeflow namespace
+    # create seldon secret
     seldon_secret = Secret(
         metadata=ObjectMeta(name="mlflow-server-seldon-init-container-s3-credentials"),
         kind="Secret",
@@ -198,10 +198,10 @@ async def test_initialise_profile_action_copy_seldon_secret(lightkube_client, pr
                 lightkube_client.get(
                     Secret,
                     name="mlflow-server-seldon-init-container-s3-credentials",
-                    namespace="kubeflow",
+                    namespace=namespace_name,
                 )
     except RetryError:
-        log.info("Test failed. Seldon secret was not found in kubeflow namespace.")
+        log.info(f"Test failed. Seldon secret was not found in {namespace_name} namespace.")
 
     # run initialise profile action
     action = (
