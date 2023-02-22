@@ -342,7 +342,7 @@ class KubeflowProfilesOperator(CharmBase):
                 with attempt:
                     self.k8s_resource_handler.lightkube_client.get(Namespace, name=profile_name)
         except ApiError:
-            event.fail(f"Action failed. Namespace {profile_name} was not found.")
+            event.fail(f"Action failed. Profile {profile_name} was not found.")
             return
         try:
             for file in PROFILE_CONFIG_FILES:
