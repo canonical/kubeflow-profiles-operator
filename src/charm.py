@@ -356,14 +356,14 @@ class KubeflowProfilesOperator(CharmBase):
         self._copy_seldon_secret(profile_name, event)
 
     def _copy_seldon_secret(self, namespace, event: ActionEvent):
-        """Copy Seldon deployment secret from kubeflow namespace to the profile's namespace."""
+        """Copy Seldon deployment secret to the profile's namespace."""
         seldon_secret = None
         # check if seldon-core-mlflow integration secret exists in kubeflow namespace
         try:
             seldon_secret = self.k8s_resource_handler.lightkube_client.get(
                 Secret,
                 name="mlflow-server-seldon-init-container-s3-credentials",
-                namespace="kubeflow",
+                namespace=self._namespace,
             )
         except ApiError as e:
             event.log(f"seldon secret not found in kubeflow namespace. error:{e}")

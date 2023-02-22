@@ -165,11 +165,8 @@ async def test_initialise_profile_action(lightkube_client, profile, ops_test):
 
 async def test_initialise_profile_action_copy_seldon_secret(lightkube_client, profile, ops_test):
     """Test initialise profile action to copy seldon secret when secret is in kubeflow namespace."""
-    # create kubeflow namespace
-    namespace_name = "kubeflow"
-    namespace_metadata = ObjectMeta(name=namespace_name)
-    namespace = Namespace(metadata=namespace_metadata)
-    lightkube_client.create(namespace, namespace_name)
+    # get the namespace
+    namespace_name = ops_test.model.name
 
     # create seldon secret in kubeflow namespace
     seldon_secret = Secret(
