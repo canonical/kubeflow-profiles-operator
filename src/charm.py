@@ -25,7 +25,7 @@ from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
-from tenacity import RetryError, Retrying, stop_after_attempt, stop_after_delay, wait_exponential
+from tenacity import Retrying, stop_after_attempt, stop_after_delay, wait_exponential
 
 K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
 NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
@@ -341,8 +341,8 @@ class KubeflowProfilesOperator(CharmBase):
             ):
                 with attempt:
                     self.k8s_resource_handler.lightkube_client.get(Namespace, name=profile_name)
-        except RetryError:
-            event.fail(f"Action failed. namespace {profile_name} was not created")
+        except ApiError:
+            event.fail(f"Action failed. Namespace {profile_name} was not found.")
             return
         try:
             for file in PROFILE_CONFIG_FILES:
