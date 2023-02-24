@@ -28,6 +28,7 @@ log = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 CHARM_NAME = METADATA["name"]
+ADMISSION_WEBHOOK_NAME = "admission-webhook"
 
 
 @pytest.mark.abort_on_fail
@@ -81,8 +82,37 @@ async def test_health_check_kfam(ops_test):
     assert result.status_code == 200
 
 
+async def test_create_profile_action_no_poddefaults(lightkube_client, ops_test):
+    """
+    Test failure of create-profile action.
+
+    PodDefault CRD doesn't exist if admission-webhook charm is not deployed causing apply
+    PodDefaults to fail.
+    """
+    username = "admin"
+    profile_name = "profilex"
+    action = (
+        await ops_test.model.applications[CHARM_NAME]
+        .units[0]
+        .run_action(
+            "create-profile",
+            username=username,
+            profilename=profile_name,
+        )
+    )
+    action_result = await action.wait()
+    assert action_result.status == "failed"
+
+
 async def test_create_profile_action(lightkube_client, ops_test):
-    """Test profile creation action."""
+    """
+    Test profile creation action.
+
+    Deploy admission-webhook before testing success of the actions to enable applying PodDefaults,
+    PodDefault CRD is part of admission-webhooks's CRDs.
+    """
+    await ops_test.model.deploy(ADMISSION_WEBHOOK_NAME, channel="latest/edge")
+    await ops_test.model.wait_for_idle(apps=[ADMISSION_WEBHOOK_NAME], status="active")
     namespace = ops_test.model_name
     username = "admin"
     profile_name = "myname"
@@ -108,7 +138,8 @@ async def test_create_profile_action(lightkube_client, ops_test):
             resourcequota=resource_quota,
         )
     )
-    await action.wait()
+    action_result = await action.wait()
+    assert action_result.status == "completed"
     validate_profile_namespace(lightkube_client, profile_name)
     validate_profile_owner(lightkube_client, namespace, profile_name, username)
     validate_profile_resource_quota(lightkube_client, namespace, profile_name, expected_quota)
@@ -127,20 +158,17 @@ async def test_initialise_profile_action(lightkube_client, profile, ops_test):
             profilename=profile_name,
         )
     )
-    await action.wait()
-
+    action_result = await action.wait()
+    assert action_result.status == "completed"
     validate_namespace_poddefaults(lightkube_client, profile_name)
 
 
 async def test_initialise_profile_action_copy_seldon_secret(lightkube_client, profile, ops_test):
-    """Test initialise profile action to copy seldon secret when secret is in kubeflow namespace."""
-    # create kubeflow namespace
-    namespace_name = "kubeflow"
-    namespace_metadata = ObjectMeta(name=namespace_name)
-    namespace = Namespace(metadata=namespace_metadata)
-    lightkube_client.create(namespace, namespace_name)
+    """Test initialise profile action to copy seldon secret when secret is in the namespace."""
+    # get the namespace
+    namespace_name = ops_test.model.name
 
-    # create seldon secret in kubeflow namespace
+    # create seldon secret
     seldon_secret = Secret(
         metadata=ObjectMeta(name="mlflow-server-seldon-init-container-s3-credentials"),
         kind="Secret",
@@ -170,10 +198,10 @@ async def test_initialise_profile_action_copy_seldon_secret(lightkube_client, pr
                 lightkube_client.get(
                     Secret,
                     name="mlflow-server-seldon-init-container-s3-credentials",
-                    namespace="kubeflow",
+                    namespace=namespace_name,
                 )
     except RetryError:
-        log.info("Test failed. Seldon secret was not found in kubeflow namespace.")
+        log.info(f"Test failed. Seldon secret was not found in {namespace_name} namespace.")
 
     # run initialise profile action
     action = (
@@ -184,7 +212,7 @@ async def test_initialise_profile_action_copy_seldon_secret(lightkube_client, pr
             profilename=profile,
         )
     )
-    await action.wait()
+    action_result = await action.wait()
 
     # assert secret is copied
     new_secret = lightkube_client.get(
@@ -192,7 +220,7 @@ async def test_initialise_profile_action_copy_seldon_secret(lightkube_client, pr
         name="seldon-init-container-secret",
         namespace=profile,
     )
-
+    assert action_result.status == "completed"
     assert new_secret.data == seldon_secret.data
 
 
