@@ -127,13 +127,7 @@ class KubeflowProfilesOperator(CharmBase):
                         "override": "replace",
                         "summary": "entry point for kubeflow profiles",
                         "command": (
-                            "/manager "
-                            "-userid-header "
-                            "kubeflow-userid "
-                            "-userid-prefix "
-                            " "
-                            "-workload-identity "
-                            " "
+                            "/manager " "-userid-header " "kubeflow-userid " "-userid-prefix " '""'
                         ),
                         "startup": "enabled",
                     }
