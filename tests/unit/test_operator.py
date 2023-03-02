@@ -120,9 +120,7 @@ def test_profiles_pebble_layer(
         "-userid-header "
         "kubeflow-userid "
         "-userid-prefix "
-        " "
-        "-workload-identity "
-        " "
+        '""'
     )
 
 
