@@ -131,9 +131,7 @@ class KubeflowProfilesOperator(CharmBase):
                             "-userid-header "
                             "kubeflow-userid "
                             "-userid-prefix "
-                            " "
-                            "-workload-identity "
-                            " "
+                            '""'
                         ),
                         "startup": "enabled",
                     }
