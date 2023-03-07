@@ -65,10 +65,6 @@ jobs:
           # Pinned until this bug is resolved: https://bugs.launchpad.net/juju/+bug/1992833
           bootstrap-options: "--agent-version=2.9.34"
           charmcraft-channel: latest/candidate
-      # TODO: Remove once the actions-operator does this automatically
-      - name: Configure kubectl
-        run: |
-          sg microk8s -c "microk8s config > ~/.kube/config"
 
       - name: Run test
         run: |
