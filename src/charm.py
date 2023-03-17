@@ -8,7 +8,7 @@ import json
 import logging
 from pathlib import Path
 
-from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
+from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
@@ -179,7 +179,7 @@ class KubeflowProfilesOperator(CharmBase):
             self.k8s_resource_handler.apply()
 
         except ApiError as e:
-            raise ApiError("Failed to create K8S resources") from e
+            raise GenericCharmRuntimeError("Failed to create K8S resources") from e
         self.model.unit.status = MaintenanceStatus("K8S resources created")
 
     def _check_container_connection(self, container: Container) -> None:
@@ -219,7 +219,7 @@ class KubeflowProfilesOperator(CharmBase):
                 self.log.info("Pebble plan updated with new configuration, replanning")
                 self.profiles_container.replan()
             except ChangeError as e:
-                raise ChangeError("Failed to replan") from e
+                raise GenericCharmRuntimeError("Failed to replan") from e
 
     def _on_profiles_pebble_ready(self, event):
         """Update the started Profiles container."""
