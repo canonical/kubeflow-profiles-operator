@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 
 ops
-oci-image
 serialized-data-interface
 lightkube
 charmed-kubeflow-chisme
