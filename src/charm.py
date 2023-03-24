@@ -223,7 +223,12 @@ class KubeflowProfilesOperator(CharmBase):
 
     def _on_profiles_pebble_ready(self, event):
         """Update the started Profiles container."""
-        self._check_container_connection(self.profiles_container)
+        # TODO: extract exception handling to _check_container_connection()
+        try:
+            self._check_container_connection(self.profiles_container)
+        except ErrorWithStatus as error:
+            self.model.unit = error.status
+            return
         self._on_event(event)
 
     def _push_namespace_labels(self):
@@ -236,7 +241,11 @@ class KubeflowProfilesOperator(CharmBase):
 
     def _on_kfam_pebble_ready(self, event):
         """Update the started kfam container."""
-        self._check_container_connection(self.kfam_container)
+        try:
+            self._check_container_connection(self.kfam_container)
+        except ErrorWithStatus as error:
+            self.model.unit = error.status
+            return
         self._on_event(event)
 
     def _on_remove(self, event):
