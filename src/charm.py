@@ -6,10 +6,9 @@
 
 import json
 import logging
-import traceback
 from pathlib import Path
 
-from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
+from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
@@ -22,7 +21,7 @@ from lightkube.resources.core_v1 import Namespace, Secret
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, Container, MaintenanceStatus, WaitingStatus
 from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 from tenacity import Retrying, stop_after_attempt, stop_after_delay, wait_exponential
@@ -179,9 +178,21 @@ class KubeflowProfilesOperator(CharmBase):
             self.unit.status = MaintenanceStatus("Creating K8S resources")
             self.k8s_resource_handler.apply()
 
-        except ApiError:
-            raise ErrorWithStatus("K8S resources creation failed", BlockedStatus)
+        except ApiError as e:
+            raise GenericCharmRuntimeError("Failed to create K8S resources") from e
         self.model.unit.status = MaintenanceStatus("K8S resources created")
+
+    def _check_container_connection(self, container: Container) -> None:
+        """Check if connection can be made with container.
+
+        Args:
+            container: the named container in a unit to check.
+
+        Raises:
+            ErrorWithStatus if the connection cannot be made.
+        """
+        if not container.can_connect():
+            raise ErrorWithStatus("Pod startup is not complete", MaintenanceStatus)
 
     def _on_install(self, _):
         """Installation only tasks."""
@@ -207,17 +218,17 @@ class KubeflowProfilesOperator(CharmBase):
             try:
                 self.log.info("Pebble plan updated with new configuration, replanning")
                 self.profiles_container.replan()
-            except ChangeError:
-                self.log.error(traceback.format_exc())
-                raise ErrorWithStatus("Failed to replan", BlockedStatus)
+            except ChangeError as e:
+                raise GenericCharmRuntimeError("Failed to replan") from e
 
     def _on_profiles_pebble_ready(self, event):
         """Update the started Profiles container."""
-        if not self.profiles_container.can_connect():
-            raise ErrorWithStatus(
-                "Profiles Pebble is ready and container is not ready", BlockedStatus
-            )
-
+        # TODO: extract exception handling to _check_container_connection()
+        try:
+            self._check_container_connection(self.profiles_container)
+        except ErrorWithStatus as error:
+            self.model.unit = error.status
+            return
         self._on_event(event)
 
     def _push_namespace_labels(self):
@@ -230,8 +241,11 @@ class KubeflowProfilesOperator(CharmBase):
 
     def _on_kfam_pebble_ready(self, event):
         """Update the started kfam container."""
-        if not self.kfam_container.can_connect():
-            raise ErrorWithStatus("kfam Pebble is ready and container is not ready", BlockedStatus)
+        try:
+            self._check_container_connection(self.kfam_container)
+        except ErrorWithStatus as error:
+            self.model.unit = error.status
+            return
         self._on_event(event)
 
     def _on_remove(self, event):
