@@ -17,12 +17,12 @@ resources:
     type: oci-image
     description: Profile controller image
     auto-fetch: true
-    upstream-source: docker.io/kubeflownotebookswg/profile-controller:v1.7.0-rc.0
+    upstream-source: docker.io/kubeflownotebookswg/profile-controller:v1.7.0
   kfam-image:
     type: oci-image
     description: Access Management image
     auto-fetch: true
-    upstream-source: docker.io/kubeflownotebookswg/kfam:v1.7.0-rc.0
+    upstream-source: docker.io/kubeflownotebookswg/kfam:v1.7.0
 provides:
   kubeflow-profiles:
     interface: k8s-service
