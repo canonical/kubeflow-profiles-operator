@@ -15,3 +15,13 @@ parts:
       - files/*yaml
     # Unpin the versions when pypa/setuptools_scm#713 gets fixed
     charm-python-packages: [setuptools==62.1.0, pip==22.0.4]  # Fixes install of some packages
+    # TODO: Handle this differently.  For now, just copied build-package from Ironic charm
+    build-packages:
+      - git
+      - libffi-dev
+      - libssl-dev
+#    charm-binary-python-packages:
+#      - cryptography
+#      - jsonschema
+#      - jinja2
+#      - git+https://opendev.org/openstack/charm-ops-sunbeam#egg=ops_sunbeam
