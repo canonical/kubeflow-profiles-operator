@@ -12,9 +12,11 @@ from ops.main import main
 import ops_sunbeam.charm as sunbeam_charm
 import ops_sunbeam.container_handlers as sunbeam_chandlers
 import ops_sunbeam.core as sunbeam_core
+import ops_sunbeam.relation_handlers as sunbeam_rhandlers
 
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 import pebble_handlers
+import relation_handlers
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +54,17 @@ class KubeflowProfilesOperator(sunbeam_charm.OSBaseOperatorCharmK8S):
                 template_dir=self.template_dir,  # defaults to /src/templates
                 callback_f=lambda: '',  # Not sure what this does
             ),
+        ]
+
+    def get_relation_handlers(
+        self, handlers: List[sunbeam_rhandlers.RelationHandler] = None
+    ) -> List[sunbeam_rhandlers.RelationHandler]:
+        return [
+            relation_handlers.KubeflowProfilesProvidesHandler(
+                charm=self,
+                relation_name="kubeflow-profiles",
+                callback_f=lambda: "",  # TODO: What does this do?
+            )
         ]
 
     @property
