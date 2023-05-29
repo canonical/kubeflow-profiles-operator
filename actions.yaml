@@ -12,6 +12,9 @@ create-profile:
       description: (Optional) resource quota for the new profile
   required: [username, profilename]
 
+describe-status:
+  description: Returns a desription of the current state of the StatusPool
+
 initialise-profile:
   description: Apply configuration to an existing profile to allow using Minio, MLFlow, and Seldon.
   params:
@@ -19,3 +22,4 @@ initialise-profile:
       type: string
       description: the name of the existing profile to be configured
   required: [profilename]
+

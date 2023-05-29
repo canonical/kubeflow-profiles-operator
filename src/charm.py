@@ -7,7 +7,7 @@
 import logging
 from typing import List
 
-from ops.framework import StoredState
+from ops.framework import EventBase, StoredState
 from ops.main import main
 import ops_sunbeam.charm as sunbeam_charm
 import ops_sunbeam.container_handlers as sunbeam_chandlers
@@ -26,6 +26,10 @@ class KubeflowProfilesOperator(sunbeam_charm.OSBaseOperatorCharmK8S):
 
     # TODO: Not sure why this is really needed.  Added it for now to unblock the database features
     service_name = "kubeflow-profiles"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.framework.observe(self.on.describe_status_action, self._describe_status_action)
 
     def get_pebble_handlers(self) -> List[sunbeam_chandlers.PebbleHandler]:
         """Pebble handlers for this charm."""
@@ -82,6 +86,9 @@ class KubeflowProfilesOperator(sunbeam_charm.OSBaseOperatorCharmK8S):
 
         _container_configs.extend([])
         return _container_configs
+
+    def _describe_status_action(self, event: EventBase) -> None:
+        event.set_results({"output": self.status_pool.summarise()})
 
 
 if __name__ == "__main__":
