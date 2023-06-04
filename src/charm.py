@@ -7,21 +7,25 @@
 import logging
 from typing import List
 
+import lightkube
 from ops.framework import EventBase, StoredState
 from ops.main import main
-import ops_sunbeam.charm as sunbeam_charm
+
+import sunbeam_extensions.kubernetes_handlers
+from sunbeam_extensions.charm import OSBaseOperatorCharmK8SExtended
 import ops_sunbeam.container_handlers as sunbeam_chandlers
 import ops_sunbeam.core as sunbeam_core
 import ops_sunbeam.relation_handlers as sunbeam_rhandlers
 
-from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 import pebble_handlers
 import relation_handlers
 
 logger = logging.getLogger(__name__)
 
+K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
 
-class KubeflowProfilesOperator(sunbeam_charm.OSBaseOperatorCharmK8S):
+
+class KubeflowProfilesOperator(OSBaseOperatorCharmK8SExtended):
     """A Juju Charm for Kubeflow Profiles Operator."""
 
     _stored = StoredState()
@@ -32,6 +36,18 @@ class KubeflowProfilesOperator(sunbeam_charm.OSBaseOperatorCharmK8S):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.framework.observe(self.on.describe_status_action, self._describe_status_action)
+
+    def get_kubernetes_handlers(self) -> List[sunbeam_extensions.kubernetes_handlers.KubernetesHandler]:
+        return [
+            sunbeam_extensions.kubernetes_handlers.KubernetesHandler(
+                charm=self,
+                name="all-resources",
+                resource_templates=K8S_RESOURCE_FILES,
+                field_manager=self.app.name,
+                lightkube_client=lightkube.Client(field_manager=self.lightkube_field_manager)
+            )
+        ]
+
 
     def get_pebble_handlers(self) -> List[sunbeam_chandlers.PebbleHandler]:
         """Pebble handlers for this charm."""
@@ -102,6 +118,12 @@ class KubeflowProfilesOperator(sunbeam_charm.OSBaseOperatorCharmK8S):
 
     def _describe_status_action(self, event: EventBase) -> None:
         event.set_results({"output": self.status_pool.summarise()})
+
+    @property
+    def lightkube_client(self) -> lightkube.Client:
+        if self._lightkube_client is None:
+            self._lightkube_client = lightkube.Client(self.lightkube_field_manager)
+        return self._lightkube_client
 
 
 if __name__ == "__main__":
