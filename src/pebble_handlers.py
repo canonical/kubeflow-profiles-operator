@@ -41,14 +41,6 @@ class KubeflowProfilesPebbleHandler(ServicePebbleHandler):
             },
         }
 
-    # def write_config(self):
-        # TODO: Should I override due to notes below?
-        # Override this because the standard way is a bit openstack-specific.
-        # Modelled after https://opendev.org/openstack/charm-ops-sunbeam/src/commit/f9fff19596a784d60be40d7076f4c6f40f677fb1/ops_sunbeam/container_handlers.py#L98
-        # which used https://opendev.org/openstack/charm-ops-sunbeam/src/commit/6a7f80a2eee0d8626e9c09080b151f56a2f28b0e/ops_sunbeam/templating.py#L49
-        # and has some built-in logic around the templates.
-        # But maybe it is close enough... looks like just user, group, and permissions are default kwargs that are passed
-
 
 class KFAMHandler(ServicePebbleHandler):
     """Manage kfam container."""

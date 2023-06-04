@@ -25,9 +25,6 @@ class SdiErrorEvent(RelationEvent):
             message: Optional[str] = None,
     ):
         super().__init__(handle=handle, relation=relation, app=app, unit=unit)
-        # TODO: message here doesn't work.  It gets removed during serialisation of the event.
-        #  There might be a solution [here](https://github.com/canonical/traefik-k8s-operator/blob/main/lib/charms/traefik_k8s/v1/ingress.py#LL185C1-L224C1)
-        #  but I dont understand
         self.message = message
 
     def snapshot(self) -> Dict:
@@ -80,13 +77,6 @@ class KubeflowProfilesProvides(Object):
     def get_interface(self) -> Optional[SerializedDataInterface]:
         """Returns the SerializedDataInterface object for this interface."""
         return get_interface(self.charm, self.relation_name)
-
-        # try:
-        #     return get_interface(self.charm, self.relation_name)
-        # except NoVersionsListed as err:
-        #     self.on.no_versions_listed.emit(message=str(err))
-        # TODO: Add NoCompaibleVersions
-        # except NoCompatibleVersions:
 
     def _on_relation_changed(self, event: ops.framework.EventBase) -> None:
         """Implements a relation-changed handler for the Provides side of kubeflow-profiles.
@@ -142,15 +132,9 @@ class KubeflowProfilesProvides(Object):
             # We check whether we've sent, on our application side of the relation, the required
             # attributes
             interface_data_dict = interface.get_data()
-            logging.info(f"got interface_data {interface_data_dict}")
-            logging.info(f"self.relation_name = {self.relation_name}")
-            logging.info(f"self.charm.app = {self.charm.app}")
             this_apps_interface_data = interface_data_dict[(self.model.get_relation(self.relation_name), self.charm.app)]
-            logging.info(f"got this_apps_interface_data {this_apps_interface_data}")
 
             for attribute in required_attributes:
-                logging.info(f"Checking attribute {attribute}")
-                logging.info(f"attribute in interface_data = {attribute in this_apps_interface_data}")
                 if not (attribute in this_apps_interface_data and this_apps_interface_data[attribute] is not None and this_apps_interface_data[attribute] != ""):
                     return False
 
