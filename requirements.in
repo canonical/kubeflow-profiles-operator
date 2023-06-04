@@ -6,4 +6,8 @@ serialized-data-interface
 lightkube
 charmed-kubeflow-chisme
 tenacity
-git+https://github.com/openstack/charm-ops-sunbeam#egg=ops_sunbeam
+# Use a local sunbeam for development
+#git+https://github.com/openstack/charm-ops-sunbeam#egg=ops_sunbeam
+-e /home/scribs/code/canonical/sunbeam/charm-ops-sunbeam/ops_sunbeam
+# TODO: Due to conflict with what juju==2.9.42.4 needs in requirements-integration.in
+urllib3 < 2
