@@ -14,9 +14,7 @@ from charm import KubeflowProfilesOperator
 
 from .test_operator_fixtures import (  # noqa F401
     harness,
-    mocked_kubernetes_service_patcher,
     mocked_lightkube_client,
-    mocked_resource_handler,
 )
 
 
