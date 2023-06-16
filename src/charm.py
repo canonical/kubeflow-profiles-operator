@@ -12,7 +12,7 @@ from lightkube.resources.rbac_authorization_v1 import ClusterRole
 from ops import EventBase
 
 from charmed_kubeflow_chisme.kubernetes import create_charm_default_labels
-from functional_base_charm.charm_main import CharmReconciler
+from functional_base_charm.charm_reconciler import CharmReconciler
 from functional_base_charm.component_graph import ComponentGraph
 from functional_base_charm.kubernetes_component import KubernetesComponent
 
