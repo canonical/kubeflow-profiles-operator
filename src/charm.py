@@ -108,20 +108,6 @@ class KubeflowProfilesOperator(CharmBase):
         self.charm_executor = CharmReconciler(self, self.component_graph)
         self.charm_executor.install(self)
 
-        # Hack to install Prioritiser.  See Prioritiser.install() for explanation
-        # Nevermind, this doesn't work either.  In unit tests, on.commit never fires.
-        # self.framework.observe(self.framework.on.commit, self._on_commit)
-
-        # TODO:
-        #  * Some more k8s resources to add
-        #  * actions
-        #  * sdi relation
-
-    # def _on_commit(self, event):
-    #     status = self.charm_executor.component_graph.status_prioritiser.highest()
-    #     logger.info(f"Got status {status} from Prioritiser - updating unit status")
-    #     self.unit.status = status
-
 
     # Debugging code
     def _describe_status_action(self, event: EventBase) -> None:
