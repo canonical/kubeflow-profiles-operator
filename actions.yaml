@@ -12,6 +12,9 @@ create-profile:
       description: (Optional) resource quota for the new profile
   required: [username, profilename]
 
+describe-status:
+  description: Returns a description of the current state of all Components of this charm.
+
 initialise-profile:
   description: Apply configuration to an existing profile to allow using Minio, MLFlow, and Seldon.
   params:
