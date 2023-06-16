@@ -4,5 +4,10 @@
 ops
 serialized-data-interface
 lightkube
-charmed-kubeflow-chisme
+# Use chisme from specific commit until this PR is merged
+# https://github.com/canonical/charmed-kubeflow-chisme/pull/69
+# charmed-kubeflow-chisme
+git+https://github.com/canonical/charmed-kubeflow-chisme.git@7e1ca1bdd206910083df4f5d98c2e937ed405f54
 tenacity
+# Use the github main branch during testing
+git+https://github.com/ca-scribner/functional-base-charm.git@main
