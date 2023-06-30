@@ -19,15 +19,6 @@ class LeadershipGate(Component):
      implementation.
     """
 
-    def _configure_unit(self, event):
-        pass
-
-    def _configure_app_leader(self, event):
-        pass
-
-    def _configure_app_non_leader(self, event):
-        pass
-
     def ready_for_execution(self) -> bool:
         """Returns True if this is the leader, else False."""
         return self._charm.unit.is_leader()
