@@ -1,8 +1,8 @@
 aiohttp
 jinja2
-juju<3.1
+juju<3.0
 lightkube
 pytest-operator
 requests
 tenacity
--r requirements.txt
+# -r requirements.txt
