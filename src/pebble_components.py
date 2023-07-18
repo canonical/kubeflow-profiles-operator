@@ -2,7 +2,7 @@ import logging
 
 from ops.pebble import Layer
 
-from functional_base_charm.pebble_component import PebbleServiceComponent
+from charmed_kubeflow_chisme.components.pebble_component import PebbleServiceComponent
 
 
 logger = logging.getLogger(__name__)

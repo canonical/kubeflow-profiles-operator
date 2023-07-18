@@ -12,15 +12,14 @@ from lightkube.resources.rbac_authorization_v1 import ClusterRole
 from ops import EventBase
 
 from charmed_kubeflow_chisme.kubernetes import create_charm_default_labels
-from functional_base_charm.charm_reconciler import CharmReconciler
-from functional_base_charm.component_graph import ComponentGraph
-from functional_base_charm.kubernetes_component import KubernetesComponent
+from charmed_kubeflow_chisme.components.charm_reconciler import CharmReconciler
+from charmed_kubeflow_chisme.components.kubernetes_component import KubernetesComponent
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
 from ops.main import main
 
-from functional_base_charm.pebble_component import ContainerFileTemplate
+from charmed_kubeflow_chisme.components.pebble_component import ContainerFileTemplate
 from other_components import LeadershipGate
 from pebble_components import KubeflowProfilesContainerComponent, KubeflowKfamContainerComponent
 from relation_component import KubeflowProfilesProvidesComponent

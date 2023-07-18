@@ -1,10 +1,8 @@
 import logging
 
 from ops import StatusBase, ActiveStatus, WaitingStatus
-from ops.pebble import Layer
 
-from functional_base_charm.component import Component
-from functional_base_charm.pebble_component import PebbleServiceComponent
+from charmed_kubeflow_chisme.components.component import Component
 
 
 logger = logging.getLogger(__name__)

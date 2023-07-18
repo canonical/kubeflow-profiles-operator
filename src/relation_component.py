@@ -1,6 +1,6 @@
 from ops import CharmBase, StatusBase
 
-from functional_base_charm.component import Component
+from charmed_kubeflow_chisme.components.component import Component
 from charms.kubeflow_profiles.v0.kubeflow_profiles import KubeflowProfilesProvides
 
 
