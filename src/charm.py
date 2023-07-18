@@ -44,36 +44,37 @@ class KubeflowProfilesOperator(CharmBase):
         # Actions
         self.framework.observe(self.on.describe_status_action, self._describe_status_action)
 
-        self.component_graph = ComponentGraph()
+        # Charm logic
+        self.charm_executor = CharmReconciler(self)
+        self.charm_executor.install(self)
 
-        self.leadership_gate_component_item = self.component_graph.add(
+        self.leadership_gate_component_item = self.charm_executor.add(
             component=LeadershipGate(
                 charm=self,
                 name="leadership-gate",
             ),
-            name="leadership-gate",
             depends_on=[]
         )
 
-        self.kubernetes_resources_component_item = self.component_graph.add(
+        self.kubernetes_resources_component_item = self.charm_executor.add(
             component=KubernetesComponent(
                 charm=self,
-                name="k8s-auth-and-crds",
+                name="kubernetes:auth-and-crds",
                 resource_templates=K8S_RESOURCE_FILES,
-                krh_child_resource_types=[CustomResourceDefinition, ClusterRole],
+                krh_resource_types={CustomResourceDefinition, ClusterRole},
                 krh_labels=create_charm_default_labels(self.app.name, self.model.name, scope="auth-and-crds"),
                 # TODO: Make this better
                 context_callable=lambda: {"app_name": self.app.name},
                 lightkube_client=lightkube.Client(),  # TODO: Make this easier to test on
             ),
-            name="kubernetes-resources",
             depends_on=[self.leadership_gate_component_item]
         )
 
-        self.kubeflow_profiles_container_item = self.component_graph.add(
+        self.kubeflow_profiles_container_item = self.charm_executor.add(
             component=KubeflowProfilesContainerComponent(
                 charm=self,
-                container_name="kubeflow-profiles",
+                name="container:kubeflow-profiles",  # This feels a bit redundant, but will read
+                container_name="kubeflow-profiles",  # well in the statuses.  Thoughts?
                 service_name="kubeflow-profiles",
                 files_to_push=[
                     ContainerFileTemplate(
@@ -82,32 +83,27 @@ class KubeflowProfilesOperator(CharmBase):
                     )
                 ]
             ),
-            name="kubeflow-profiles",
             depends_on=[self.leadership_gate_component_item, self.kubernetes_resources_component_item],  # Not really needed.  But for fun!
         )
 
-        self.kubeflow_kfam_container_item = self.component_graph.add(
+        self.kubeflow_kfam_container_item = self.charm_executor.add(
             component=KubeflowKfamContainerComponent(
                 charm=self,
+                name="container:kubeflow-kfam",
                 container_name="kubeflow-kfam",
                 service_name="kubeflow-kfam"
             ),
-            name="kubeflow-kfam",
             depends_on=[self.leadership_gate_component_item, self.kubernetes_resources_component_item],
         )
 
-        self.kubeflow_profiles_provides_container_item = self.component_graph.add(
+        self.kubeflow_profiles_provides_container_item = self.charm_executor.add(
             component=KubeflowProfilesProvidesComponent(
                 charm=self,
-                name="kubeflow-profiles"  # relation name
+                name="relation:kubeflow-profiles",
+                relation_name="kubeflow-profiles",
             ),
-            name="relation:kubeflow-profiles",
             depends_on=[self.leadership_gate_component_item]
         )
-
-        self.charm_executor = CharmReconciler(self, self.component_graph)
-        self.charm_executor.install(self)
-
 
     # Debugging code
     def _describe_status_action(self, event: EventBase) -> None:

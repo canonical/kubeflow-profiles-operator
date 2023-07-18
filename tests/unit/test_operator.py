@@ -20,6 +20,7 @@ from .test_operator_fixtures import (  # noqa F401
 
 def test_not_leader(
     harness,  # noqa F811
+    mocked_lightkube_client,  # noqa F811
     # mocked_kubernetes_service_patcher,  # noqa F811
     # mocked_resource_handler,  # noqa F811
 ):

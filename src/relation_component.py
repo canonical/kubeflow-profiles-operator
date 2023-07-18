@@ -16,12 +16,13 @@ class KubeflowProfilesProvidesComponent(Component):
     the KubeflowProfilesProvides lib.
     """
 
-    def __init__(self, charm: CharmBase, name: str):
+    def __init__(self, charm: CharmBase, name: str, relation_name: str):
         super().__init__(charm, name)
+        self.relation_name = relation_name
 
         self.kubeflow_profiles_provides = KubeflowProfilesProvides(
             charm=self._charm,
-            relation_name=name,
+            relation_name=self.relation_name,
             refresh_event=None,  # By default, it triggers on relation changed and config changed
         )
 
