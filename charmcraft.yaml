@@ -1,4 +1,4 @@
-# Copyright 2021 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 type: charm
@@ -13,5 +13,4 @@ parts:
   charm:
     prime:
       - files/*yaml
-    # Unpin the versions when pypa/setuptools_scm#713 gets fixed
-    charm-python-packages: [setuptools==62.1.0, pip==22.0.4]  # Fixes install of some packages
+    charm-python-packages: [setuptools, pip]
