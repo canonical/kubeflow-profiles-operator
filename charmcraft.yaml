@@ -13,5 +13,10 @@ parts:
   charm:
     prime:
       - files/*yaml
-    # Unpin the versions when pypa/setuptools_scm#713 gets fixed
-    charm-python-packages: [setuptools==62.1.0, pip==22.0.4]  # Fixes install of some packages
+    charm-python-packages: [setuptools, pip]
+    # Workaround for https://github.com/python-jsonschema/jsonschema/issues/1114
+    # and https://github.com/crate-py/rpds/issues/6
+    # and https://github.com/python-jsonschema/jsonschema/issues/1117
+    # TODO: jsonschema is a dependency of SDI, once SDI is not used on this charm,
+    # this workaround can be removed
+    charm-binary-python-packages: [jsonschema]
