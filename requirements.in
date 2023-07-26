@@ -1,8 +1,5 @@
-# Copyright 2021 Canonical Ltd.
-# See LICENSE file for licensing details.
-
+charmed-kubeflow-chisme
+lightkube
 ops
 serialized-data-interface
-lightkube
-charmed-kubeflow-chisme
 tenacity
