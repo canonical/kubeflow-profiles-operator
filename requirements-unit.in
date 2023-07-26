@@ -8,7 +8,7 @@
 #     is allowed, and should not represent any risk.
 #   * Adding a dependency in this file means the dependency is directly used
 #     in the unit test files(s).
-#   * ALL python packages/libs used directy in the unit test file(s) must be
+#   * ALL python packages/libs used directly in the unit test file(s) must be
 #     listed here even if requirements.in is already adding them. This will
 #     add clarity to the dependency list.
 #   * Pinning a version of a python package/lib shared with requirements.in
