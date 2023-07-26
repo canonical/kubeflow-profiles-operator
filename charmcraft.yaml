@@ -11,7 +11,4 @@ bases:
       channel: "20.04"
 parts:
   charm:
-    prime:
-      - src/templates/*yaml
-    # Unpin the versions when pypa/setuptools_scm#713 gets fixed
-    charm-python-packages: [setuptools==62.1.0, pip==22.0.4]  # Fixes install of some packages
+    charm-python-packages: [setuptools, pip]
