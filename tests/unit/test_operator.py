@@ -1,4 +1,4 @@
-# Copyright 2021 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 """Unit tests. Harness and Mocks are defined in test_operator_fixtures.py."""
 import json
