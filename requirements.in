@@ -1,8 +1,11 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-ops
-serialized-data-interface
-lightkube
 charmed-kubeflow-chisme
+lightkube
+# pin to <2 due to track/1.7 depends on <2
+ops<2
+# track/1.7 implementation is not compatible
+# with SDI>0.3.
+serialized-data-interface<0.4
 tenacity
