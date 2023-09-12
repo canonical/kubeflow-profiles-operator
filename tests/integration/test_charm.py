@@ -42,14 +42,9 @@ async def test_build_and_deploy(ops_test):
 
     await ops_test.model.deploy(my_charm, resources=resources, trust=True)
 
-    await ops_test.model.block_until(
-        lambda: all(
-            (unit.workload_status == "active") and unit.agent_status == "idle"
-            for _, application in ops_test.model.applications.items()
-            for unit in application.units
-        ),
-        timeout=600,
-    )
+    await ops_test.model.wait_for_idle(
+            apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
+        )
 
 
 async def test_status(ops_test):
