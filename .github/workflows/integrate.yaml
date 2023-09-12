@@ -56,8 +56,6 @@ jobs:
           channel: 1.25-strict/stable
           juju-channel: 3.1/stable
           charmcraft-channel: latest/candidate
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
       - name: Run test
         run: |
           sg snap_microk8s -c "tox -e integration -- --model testing"
