@@ -49,8 +49,6 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v3
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
@@ -58,7 +56,8 @@ jobs:
           channel: 1.25-strict/stable
           juju-channel: 3.1/stable
           charmcraft-channel: latest/candidate
-
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
       - name: Run test
         run: |
           sg snap_microk8s -c "tox -e integration -- --model testing"
