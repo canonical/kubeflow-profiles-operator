@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements-unit.in
 #
-anyio==3.7.1
+anyio==4.0.0
     # via httpcore
 attrs==23.1.0
     # via jsonschema
@@ -17,19 +17,19 @@ charmed-kubeflow-chisme==0.2.0
     # via -r requirements.in
 charset-normalizer==3.2.0
     # via requests
-coverage==7.3.0
+coverage==7.3.1
     # via -r requirements-unit.in
 deepdiff==6.2.1
     # via charmed-kubeflow-chisme
-exceptiongroup==1.1.2
+exceptiongroup==1.1.3
     # via
     #   anyio
     #   pytest
 h11==0.14.0
     # via httpcore
-httpcore==0.17.3
+httpcore==0.18.0
     # via httpx
-httpx==0.24.1
+httpx==0.25.0
     # via lightkube
 idna==3.4
     # via
@@ -49,11 +49,11 @@ lightkube==0.14.0
     #   -r requirements-unit.in
     #   -r requirements.in
     #   charmed-kubeflow-chisme
-lightkube-models==1.27.1.4
+lightkube-models==1.28.1.4
     # via lightkube
 markupsafe==2.1.3
     # via jinja2
-ops==2.5.0
+ops==2.6.0
     # via
     #   -r requirements-unit.in
     #   -r requirements.in
@@ -65,11 +65,11 @@ packaging==23.1
     # via pytest
 pkgutil-resolve-name==1.3.10
     # via jsonschema
-pluggy==1.2.0
+pluggy==1.3.0
     # via pytest
 pyrsistent==0.19.3
     # via jsonschema
-pytest==7.4.0
+pytest==7.4.2
     # via
     #   -r requirements-unit.in
     #   pytest-lazy-fixture
@@ -98,7 +98,7 @@ sniffio==1.3.0
     #   anyio
     #   httpcore
     #   httpx
-tenacity==8.2.2
+tenacity==8.2.3
     # via
     #   -r requirements.in
     #   charmed-kubeflow-chisme
@@ -106,7 +106,7 @@ tomli==2.0.1
     # via pytest
 urllib3==2.0.4
     # via requests
-websocket-client==1.6.1
+websocket-client==1.6.3
     # via ops
 zipp==3.16.2
     # via importlib-resources

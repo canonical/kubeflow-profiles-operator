@@ -52,15 +52,15 @@ frozenlist==1.4.0
     # via
     #   aiohttp
     #   aiosignal
-google-auth==2.22.0
+google-auth==2.23.0
     # via kubernetes
 h11==0.14.0
     # via httpcore
-httpcore==0.17.3
+httpcore==0.18.0
     # via httpx
-httpx==0.24.1
+httpx==0.25.0
     # via lightkube
-hvac==1.2.0
+hvac==1.2.1
     # via juju
 idna==3.4
     # via
@@ -182,7 +182,6 @@ rsa==4.9
 six==1.16.0
     # via
     #   asttokens
-    #   google-auth
     #   kubernetes
     #   macaroonbakery
     #   paramiko
@@ -220,7 +219,7 @@ urllib3==1.26.16
     #   requests
 wcwidth==0.2.6
     # via prompt-toolkit
-websocket-client==1.6.2
+websocket-client==1.6.3
     # via kubernetes
 websockets==8.1
     # via juju
