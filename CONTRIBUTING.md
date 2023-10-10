@@ -57,7 +57,8 @@ juju add-model dev
 juju model-config logging-config="<root>=INFO;unit=DEBUG"
 # Deploy the charm
 juju deploy ./kubeflow-profiles_ubuntu-20.04-amd64.charm \
-    --resource profile-image=$(yq '.resources."profile-image"."upstream-source"' metadata.yaml)
+    --resource profile-image=$(yq '.resources."profile-image"."upstream-source"' metadata.yaml) \
+    --resource kfam-image=$(yq '.resources."kfam-image"."upstream-source"' metadata.yaml)
 ```
 
 ## Canonical Contributor Agreement
