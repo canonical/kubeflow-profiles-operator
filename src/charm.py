@@ -103,6 +103,8 @@ class KubeflowProfilesOperator(CharmBase):
         """Return environment variables."""
         return {
             "ISTIO_INGRESS_GATEWAY_PRINCIPAL": "cluster.local/ns/kubeflow/sa/istio-ingressgateway-workload-service-account",  # noqa E501
+            "NOTEBOOK_CONTROLLER_PRINCIPAL": "cluster.local/ns/kubeflow/sa/jupyter-controller",
+            "KFP_UI_PRINCIPAL": "cluster.local/ns/kubeflow/sa/kfp-ui",
         }
 
     @property
