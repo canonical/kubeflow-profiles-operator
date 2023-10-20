@@ -99,6 +99,13 @@ class KubeflowProfilesOperator(CharmBase):
         return context
 
     @property
+    def service_environment(self):
+        """Return environment variables."""
+        return {
+            "ISTIO_INGRESS_GATEWAY_PRINCIPAL": "cluster.local/ns/kubeflow/sa/istio-ingressgateway-workload-service-account",  # noqa E501
+        }
+
+    @property
     def k8s_resource_handler(self):
         """Update K8S with K8S resources."""
         if not self._k8s_resource_handler:
@@ -128,6 +135,7 @@ class KubeflowProfilesOperator(CharmBase):
                         "command": (
                             "/manager " "-userid-header " "kubeflow-userid " "-userid-prefix " '""'
                         ),
+                        "environment": self.service_environment,
                         "startup": "enabled",
                     }
                 },
