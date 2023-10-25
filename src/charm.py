@@ -62,6 +62,15 @@ class KubeflowProfilesOperator(CharmBase):
         self._lightkube_field_manager = "lightkube"
         self._k8s_resource_handler = None
 
+        # service account names are hardcoded
+        # TODO: implement relation and get from relation data
+        # tracked in https://github.com/canonical/kubeflow-profiles-operator/issues/156
+        self._istio_gateway_principal = (
+            "cluster.local/ns/kubeflow/sa/istio-ingressgateway-workload-service-account"
+        )
+        self._notebook_controller_principal = "cluster.local/ns/kubeflow/sa/jupyter-controller"
+        self._kfp_ui_principal = "cluster.local/ns/kubeflow/sa/kfp-ui"
+
         # setup events to be handled by specific event handlers
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.remove, self._on_remove)
@@ -99,6 +108,23 @@ class KubeflowProfilesOperator(CharmBase):
         return context
 
     @property
+    def _profiles_service_environment(self):
+        """Return environment variables for kubeflow-profiles container."""
+        return {
+            "ISTIO_INGRESS_GATEWAY_PRINCIPAL": self._istio_gateway_principal,  # noqa E501
+            "NOTEBOOK_CONTROLLER_PRINCIPAL": self._notebook_controller_principal,
+            "KFP_UI_PRINCIPAL": self._kfp_ui_principal,
+        }
+
+    @property
+    def _kfam_service_environment(self):
+        """Return environment variables for kubeflow-kfam container."""
+        return {
+            "ISTIO_INGRESS_GATEWAY_PRINCIPAL": self._istio_gateway_principal,  # noqa E501
+            "KFP_UI_PRINCIPAL": self._kfp_ui_principal,
+        }
+
+    @property
     def k8s_resource_handler(self):
         """Update K8S with K8S resources."""
         if not self._k8s_resource_handler:
@@ -128,6 +154,7 @@ class KubeflowProfilesOperator(CharmBase):
                         "command": (
                             "/manager " "-userid-header " "kubeflow-userid " "-userid-prefix " '""'
                         ),
+                        "environment": self._profiles_service_environment,
                         "startup": "enabled",
                     }
                 },
@@ -159,6 +186,7 @@ class KubeflowProfilesOperator(CharmBase):
                             "-userid-prefix "
                             '""'
                         ),
+                        "environment": self._kfam_service_environment,
                         "startup": "enabled",
                     }
                 },
