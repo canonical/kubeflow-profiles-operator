@@ -24,7 +24,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from . import constants
+from tests.integration import constants
 
 log = logging.getLogger(__name__)
 
