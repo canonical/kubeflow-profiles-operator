@@ -24,9 +24,9 @@ from tenacity import (
     wait_exponential,
 )
 
-log = logging.getLogger(__name__)
-
 from . import constants
+
+log = logging.getLogger(__name__)
 
 
 @pytest.mark.abort_on_fail
@@ -103,7 +103,9 @@ async def test_create_profile_action(lightkube_client, ops_test):
     PodDefault CRD is part of admission-webhooks's CRDs.
     """
     await ops_test.model.deploy(
-        constants.ADMISSION_WEBHOOK, channel=constants.ADMISSION_WEBHOOK_CHANNEL, trust=constants.ADMISSION_WEBHOOK_TRUST
+        constants.ADMISSION_WEBHOOK,
+        channel=constants.ADMISSION_WEBHOOK_CHANNEL,
+        trust=constants.ADMISSION_WEBHOOK_TRUST,
     )
     await ops_test.model.wait_for_idle(apps=[constants.ADMISSION_WEBHOOK], status="active")
     namespace = ops_test.model_name
