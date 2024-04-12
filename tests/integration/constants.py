@@ -1,9 +1,5 @@
-# Copyright 2024 Canonical Ltd.
-# See LICENSE file for licensing details.
-"""Constants module including constants used in tests."""
-from pathlib import Path
-
 import yaml
+from pathlib import Path
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 CHARM_NAME = METADATA["name"]
