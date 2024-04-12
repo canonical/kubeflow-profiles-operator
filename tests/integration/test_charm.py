@@ -26,7 +26,11 @@ from tenacity import (
 
 log = logging.getLogger(__name__)
 
-from . import constants
+METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
+CHARM_NAME = METADATA["name"]
+ADMISSION_WEBHOOK = "admission-webhook"
+ADMISSION_WEBHOOK_CHANNEL = "1.8/stable"
+ADMISSION_WEBHOOK_TRUST = True
 
 
 @pytest.mark.abort_on_fail
@@ -34,18 +38,20 @@ from . import constants
 async def test_build_and_deploy(ops_test):
     """Build the charm-under-test and deploy it."""
     my_charm = await ops_test.build_charm(".")
-    resources = {"kfam-image": constants.KFAM_IMAGE, "profile-image": constants.PROFILE_IMAGE}
+    kfam_image_path = METADATA["resources"]["kfam-image"]["upstream-source"]
+    profile_image_path = METADATA["resources"]["profile-image"]["upstream-source"]
+    resources = {"kfam-image": kfam_image_path, "profile-image": profile_image_path}
 
     await ops_test.model.deploy(my_charm, resources=resources, trust=True)
 
     await ops_test.model.wait_for_idle(
-        apps=[constants.CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
+        apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
     )
 
 
 async def test_status(ops_test):
     """Assert on the unit status."""
-    assert ops_test.model.applications[constants.CHARM_NAME].units[0].workload_status == "active"
+    assert ops_test.model.applications[CHARM_NAME].units[0].workload_status == "active"
 
 
 # Parameterize to two different profiles?
@@ -83,7 +89,7 @@ async def test_create_profile_action_no_poddefaults(lightkube_client, ops_test):
     username = "admin"
     profile_name = "profilex"
     action = (
-        await ops_test.model.applications[constants.CHARM_NAME]
+        await ops_test.model.applications[CHARM_NAME]
         .units[0]
         .run_action(
             "create-profile",
@@ -103,9 +109,9 @@ async def test_create_profile_action(lightkube_client, ops_test):
     PodDefault CRD is part of admission-webhooks's CRDs.
     """
     await ops_test.model.deploy(
-        constants.ADMISSION_WEBHOOK, channel=constants.ADMISSION_WEBHOOK_CHANNEL, trust=constants.ADMISSION_WEBHOOK_TRUST
+        ADMISSION_WEBHOOK, channel=ADMISSION_WEBHOOK_CHANNEL, trust=ADMISSION_WEBHOOK_TRUST
     )
-    await ops_test.model.wait_for_idle(apps=[constants.ADMISSION_WEBHOOK], status="active")
+    await ops_test.model.wait_for_idle(apps=[ADMISSION_WEBHOOK], status="active")
     namespace = ops_test.model_name
     username = "admin"
     profile_name = "myname"
@@ -122,7 +128,7 @@ async def test_create_profile_action(lightkube_client, ops_test):
     """
     expected_quota = json.loads(resource_quota)
     action = (
-        await ops_test.model.applications[constants.CHARM_NAME]
+        await ops_test.model.applications[CHARM_NAME]
         .units[0]
         .run_action(
             "create-profile",
@@ -144,7 +150,7 @@ async def test_initialise_profile_action(lightkube_client, profile, ops_test):
     profile_name = profile
 
     action = (
-        await ops_test.model.applications[constants.CHARM_NAME]
+        await ops_test.model.applications[CHARM_NAME]
         .units[0]
         .run_action(
             "initialise-profile",
@@ -198,7 +204,7 @@ async def test_initialise_profile_action_copy_seldon_secret(lightkube_client, pr
 
     # run initialise profile action
     action = (
-        await ops_test.model.applications[constants.CHARM_NAME]
+        await ops_test.model.applications[CHARM_NAME]
         .units[0]
         .run_action(
             "initialise-profile",
