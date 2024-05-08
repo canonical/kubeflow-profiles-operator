@@ -28,7 +28,9 @@ log = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 CHARM_NAME = METADATA["name"]
-ADMISSION_WEBHOOK_NAME = "admission-webhook"
+ADMISSION_WEBHOOK = "admission-webhook"
+ADMISSION_WEBHOOK_CHANNEL = "1.8/stable"
+ADMISSION_WEBHOOK_TRUST = True
 
 
 @pytest.mark.abort_on_fail
@@ -106,8 +108,10 @@ async def test_create_profile_action(lightkube_client, ops_test):
     Deploy admission-webhook before testing success of the actions to enable applying PodDefaults,
     PodDefault CRD is part of admission-webhooks's CRDs.
     """
-    await ops_test.model.deploy(ADMISSION_WEBHOOK_NAME, channel="latest/edge", trust=True)
-    await ops_test.model.wait_for_idle(apps=[ADMISSION_WEBHOOK_NAME], status="active")
+    await ops_test.model.deploy(
+        ADMISSION_WEBHOOK, channel=ADMISSION_WEBHOOK_CHANNEL, trust=ADMISSION_WEBHOOK_TRUST
+    )
+    await ops_test.model.wait_for_idle(apps=[ADMISSION_WEBHOOK], status="active")
     namespace = ops_test.model_name
     username = "admin"
     profile_name = "myname"
