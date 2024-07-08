@@ -10,11 +10,17 @@ import lightkube
 import pytest
 import requests
 import yaml
+from charmed_kubeflow_chisme.testing import (
+    GRAFANA_AGENT_APP,
+    assert_logging,
+    deploy_and_assert_grafana_agent,
+)
 from lightkube import codecs
 from lightkube.generic_resource import create_global_resource, create_namespaced_resource
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Namespace, Secret
 from lightkube.types import PatchType
+from pytest_operator.plugin import OpsTest
 from tenacity import (
     RetryError,
     Retrying,
@@ -46,10 +52,21 @@ async def test_build_and_deploy(ops_test):
         apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
     )
 
+    # Deploying grafana-agent-k8s and add all relations
+    await deploy_and_assert_grafana_agent(
+        ops_test.model, CHARM_NAME, metrics=False, dashboard=False, logging=True
+    )
+
 
 async def test_status(ops_test):
     """Assert on the unit status."""
     assert ops_test.model.applications[CHARM_NAME].units[0].workload_status == "active"
+
+
+async def test_logging(ops_test: OpsTest):
+    """Test logging is defined in relation data bag."""
+    app = ops_test.model.applications[GRAFANA_AGENT_APP]
+    await assert_logging(app)
 
 
 # Parameterize to two different profiles?

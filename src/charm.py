@@ -12,6 +12,7 @@ from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRunt
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
+from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube import ApiError, LoadResourceError, codecs
 from lightkube.generic_resource import create_global_resource, load_in_cluster_generic_resources
@@ -90,6 +91,8 @@ class KubeflowProfilesOperator(CharmBase):
 
         for rel in self.model.relations.keys():
             self.framework.observe(self.on[rel].relation_changed, self._on_event)
+
+        self._logging = LogForwarder(charm=self)
 
     @property
     def profiles_container(self):

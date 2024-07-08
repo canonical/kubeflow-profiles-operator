@@ -20,6 +20,17 @@ from .test_operator_fixtures import (  # noqa F401
 )
 
 
+def test_log_forwarding(
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test LogForwarder initialization."""
+    with patch("charm.LogForwarder") as mock_logging:
+        harness.begin()
+        mock_logging.assert_called_once_with(charm=harness.charm)
+
+
 def test_not_leader(
     harness,  # noqa F811
     mocked_kubernetes_service_patcher,  # noqa F811
