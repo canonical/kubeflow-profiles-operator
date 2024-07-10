@@ -10,11 +10,7 @@ import lightkube
 import pytest
 import requests
 import yaml
-from charmed_kubeflow_chisme.testing import (
-    GRAFANA_AGENT_APP,
-    assert_logging,
-    deploy_and_assert_grafana_agent,
-)
+from charmed_kubeflow_chisme.testing import assert_logging, deploy_and_assert_grafana_agent
 from lightkube import codecs
 from lightkube.generic_resource import create_global_resource, create_namespaced_resource
 from lightkube.models.meta_v1 import ObjectMeta
@@ -65,7 +61,7 @@ async def test_status(ops_test):
 
 async def test_logging(ops_test: OpsTest):
     """Test logging is defined in relation data bag."""
-    app = ops_test.model.applications[GRAFANA_AGENT_APP]
+    app = ops_test.model.applications[CHARM_NAME]
     await assert_logging(app)
 
 
