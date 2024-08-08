@@ -1,0 +1,20 @@
+groups:
+- name: KubeflowProfilesServices
+  rules:
+  - alert: KfamDown
+    expr: absent(service_heartbeat{component="kfam"})
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Kubeflow kfam is Down (instance {{ $labels.instance }})
+      description: "The Kubeflow kfam service is unavailable.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+  - alert: ProfilesDown
+    expr: absent(service_heartbeat{component="profile_controller"})
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Kubeflow profiles is Down (instance {{ $labels.instance }})
+      description: "The Kubeflow profiles service is unavailable.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"

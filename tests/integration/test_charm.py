@@ -10,7 +10,13 @@ import lightkube
 import pytest
 import requests
 import yaml
-from charmed_kubeflow_chisme.testing import assert_logging, deploy_and_assert_grafana_agent
+from charmed_kubeflow_chisme.testing import (
+    assert_alert_rules,
+    assert_logging,
+    assert_metrics_endpoint,
+    deploy_and_assert_grafana_agent,
+    get_alert_rules,
+)
 from lightkube import codecs
 from lightkube.generic_resource import create_global_resource, create_namespaced_resource
 from lightkube.models.meta_v1 import ObjectMeta
@@ -50,7 +56,7 @@ async def test_build_and_deploy(ops_test):
 
     # Deploying grafana-agent-k8s and add all relations
     await deploy_and_assert_grafana_agent(
-        ops_test.model, CHARM_NAME, metrics=False, dashboard=False, logging=True
+        ops_test.model, CHARM_NAME, metrics=True, dashboard=False, logging=True
     )
 
 
@@ -63,6 +69,24 @@ async def test_logging(ops_test: OpsTest):
     """Test logging is defined in relation data bag."""
     app = ops_test.model.applications[CHARM_NAME]
     await assert_logging(app)
+
+
+async def test_alert_rules(ops_test):
+    """Test check charm alert rules and rules defined in relation data bag."""
+    app = ops_test.model.applications[CHARM_NAME]
+    alert_rules = get_alert_rules()
+    await assert_alert_rules(app, alert_rules)
+
+
+async def test_metrics_enpoint(ops_test):
+    """Test metrics_endpoints are defined in relation data bag and their accessibility.
+
+    This function gets all the metrics_endpoints from the relation data bag, checks if
+    they are available in current defined targets in Grafana agent.
+    """
+    app = ops_test.model.applications[CHARM_NAME]
+    await assert_metrics_endpoint(app, metrics_port=8080, metrics_path="/metrics")
+    await assert_metrics_endpoint(app, metrics_port=8081, metrics_path="/metrics")
 
 
 # Parameterize to two different profiles?

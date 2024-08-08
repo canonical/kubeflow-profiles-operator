@@ -31,6 +31,20 @@ def test_log_forwarding(
         mock_logging.assert_called_once_with(charm=harness.charm)
 
 
+def test_metrics(
+    harness,  # noqa F811
+    mocked_kubernetes_service_patcher,  # noqa F811
+    mocked_resource_handler,  # noqa F811
+):
+    """Test MetricsEndpointProvider initialization."""
+    with patch("charm.MetricsEndpointProvider") as mocked_metrics_endpoint_provider:
+        harness.begin()
+        mocked_metrics_endpoint_provider.assert_called_once_with(
+            harness.charm,
+            jobs=[{"static_configs": [{"targets": ["*:8080", "*:8081"]}]}],
+        )
+
+
 def test_not_leader(
     harness,  # noqa F811
     mocked_kubernetes_service_patcher,  # noqa F811
