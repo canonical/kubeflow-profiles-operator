@@ -7,8 +7,8 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: Kubeflow kfam is Down (instance {{ $labels.instance }})
-      description: "The Kubeflow kfam service is unavailable.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+      summary: Kubeflow-kfam is Down (instance {{ $labels.instance }})
+      description: "The kubeflow-kfam service is unavailable.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
 
   - alert: ProfilesDown
     expr: absent(service_heartbeat{component="profile_controller"})
@@ -16,5 +16,5 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: Kubeflow profiles is Down (instance {{ $labels.instance }})
-      description: "The Kubeflow profiles service is unavailable.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+      summary: Kubeflow-profiles is Down (instance {{ $labels.instance }})
+      description: "The kubeflow-profiles service is unavailable.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
