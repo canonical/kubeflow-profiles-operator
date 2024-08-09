@@ -94,11 +94,10 @@ class KubeflowProfilesOperator(CharmBase):
             self.framework.observe(self.on[rel].relation_changed, self._on_event)
 
         self._logging = LogForwarder(charm=self)
-        self._scraping = MetricsEndpointProvider(
+        self.prometheus_provider = MetricsEndpointProvider(
             self,
             jobs=[{"static_configs": [{"targets": ["*:8080", "*:8081"]}]}],
         )
-        self.log.error("refresh_event: %s", self.on.events())
 
     @property
     def profiles_container(self):
