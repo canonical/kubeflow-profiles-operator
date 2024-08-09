@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 """Unit tests. Harness and Mocks are defined in test_operator_fixtures.py."""
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from lightkube.generic_resource import create_global_resource
 from lightkube.models.meta_v1 import ObjectMeta
@@ -12,18 +12,11 @@ from ops.model import ActiveStatus, WaitingStatus
 
 from charm import KubeflowProfilesOperator
 
-from .test_operator_fixtures import (  # noqa F401
-    harness,
-    mocked_kubernetes_service_patcher,
-    mocked_lightkube_client,
-    mocked_resource_handler,
-)
-
 
 def test_log_forwarding(
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
 ):
     """Test LogForwarder initialization."""
     with patch("charm.LogForwarder") as mock_logging:
@@ -31,10 +24,25 @@ def test_log_forwarding(
         mock_logging.assert_called_once_with(charm=harness.charm)
 
 
+def test_metrics(
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
+):
+    """Test MetricsEndpointProvider initialization."""
+    with patch("charm.MetricsEndpointProvider") as mocked_metrics_endpoint_provider:
+        harness.begin()
+        mocked_metrics_endpoint_provider.assert_called_once_with(
+            harness.charm,
+            jobs=[{"static_configs": [{"targets": ["*:8080", "*:8081"]}]}],
+            refresh_event=[ANY, ANY],  # Note(rgildein): representing pebble_ready services
+        )
+
+
 def test_not_leader(
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
 ):
     """Test not a leader scenario."""
     harness.begin_with_initial_hooks()
@@ -44,9 +52,9 @@ def test_not_leader(
 
 
 def test_profiles_container_running(
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
 ):
     """Test that kubeflow-profiles container is running."""
     harness.set_leader(True)
@@ -56,9 +64,9 @@ def test_profiles_container_running(
 
 
 def test_kfam_container_running(
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
 ):
     """Test that kubeflow-kfam container is running."""
     harness.set_leader(True)
@@ -68,9 +76,9 @@ def test_kfam_container_running(
 
 
 def test_no_relation(
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
 ):
     """Test no relation scenario."""
     harness.set_leader(True)
@@ -85,9 +93,9 @@ def test_no_relation(
 
 
 def test_profiles_pebble_ready_first_scenario(
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
 ):
     """Test (install -> profiles pebble ready -> kfam pebble ready) reach Active.."""
     harness.set_leader(True)
@@ -99,9 +107,9 @@ def test_profiles_pebble_ready_first_scenario(
 
 
 def test_kfam_pebble_ready_first_scenario(
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
 ):
     """Test (install -> kfam pebble ready -> profiles pebble ready) reach Active."""
     harness.set_leader(True)
@@ -113,9 +121,9 @@ def test_kfam_pebble_ready_first_scenario(
 
 
 def test_profiles_pebble_layer(
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
 ):
     """Test creation of Profiles Pebble layer. Only testing specific items."""
     harness.set_leader(True)
@@ -136,9 +144,9 @@ def test_profiles_pebble_layer(
 
 
 def test_kfam_pebble_layer(
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
 ):
     """Test creation of kfam Pebble layer. Only testing specific items."""
     harness.set_leader(True)
@@ -164,9 +172,9 @@ def test_kfam_pebble_layer(
 @patch.object(KubeflowProfilesOperator, "create_profile")
 def test_on_create_profile_action(
     create_profile,
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
 ):
     """Test that create_profile method is called on create-profile action."""
     harness.begin()
@@ -203,9 +211,9 @@ def test_on_create_profile_action(
 @patch.object(KubeflowProfilesOperator, "configure_profile")
 def test_on_initialise_profile_action(
     configure_profile,
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
 ):
     """Test that configure_profile method is called on initialise-profile action."""
     harness.begin()
@@ -221,10 +229,10 @@ def test_on_initialise_profile_action(
 
 
 def test_copy_seldon_secret(
-    harness,  # noqa F811
-    mocked_kubernetes_service_patcher,  # noqa F811
-    mocked_resource_handler,  # noqa F811
-    mocked_lightkube_client,  # noqa F811
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
+    mocked_lightkube_client,
 ):
     """Test that seldon secret is copied to the profile's namespace with the correct values."""
     profile_name = "username"

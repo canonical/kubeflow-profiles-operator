@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """A Juju Charm for Kubeflow Profiles Operator."""
@@ -14,6 +14,7 @@ from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from lightkube import ApiError, LoadResourceError, codecs
 from lightkube.generic_resource import create_global_resource, load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
@@ -93,6 +94,14 @@ class KubeflowProfilesOperator(CharmBase):
             self.framework.observe(self.on[rel].relation_changed, self._on_event)
 
         self._logging = LogForwarder(charm=self)
+        self.prometheus_provider = MetricsEndpointProvider(
+            self,
+            jobs=[{"static_configs": [{"targets": ["*:8080", "*:8081"]}]}],
+            refresh_event=[
+                self.on.kubeflow_profiles_pebble_ready,
+                self.on.kubeflow_kfam_pebble_ready,
+            ],
+        )
 
     @property
     def profiles_container(self):
