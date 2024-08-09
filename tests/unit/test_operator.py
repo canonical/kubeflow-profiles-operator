@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 """Unit tests. Harness and Mocks are defined in test_operator_fixtures.py."""
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from lightkube.generic_resource import create_global_resource
 from lightkube.models.meta_v1 import ObjectMeta
@@ -35,6 +35,7 @@ def test_metrics(
         mocked_metrics_endpoint_provider.assert_called_once_with(
             harness.charm,
             jobs=[{"static_configs": [{"targets": ["*:8080", "*:8081"]}]}],
+            refresh_event=[ANY, ANY],  # Note(rgildein): representing pebble_ready services
         )
 
 

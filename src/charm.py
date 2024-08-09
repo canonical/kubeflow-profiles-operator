@@ -97,6 +97,10 @@ class KubeflowProfilesOperator(CharmBase):
         self.prometheus_provider = MetricsEndpointProvider(
             self,
             jobs=[{"static_configs": [{"targets": ["*:8080", "*:8081"]}]}],
+            refresh_event=[
+                self.on.kubeflow_profiles_pebble_ready,
+                self.on.kubeflow_kfam_pebble_ready,
+            ],
         )
 
     @property
