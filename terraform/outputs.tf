@@ -4,13 +4,13 @@ output "app_name" {
 
 output "provides" {
   value = {
-	kubeflow_profiles = "kubeflow-profiles"
-	metrics_endpoint  = "metrics-endpoint"
+    kubeflow_profiles = "kubeflow-profiles"
+    metrics_endpoint  = "metrics-endpoint"
   }
 }
 
 output "requires" {
   value = {
-    logging         = "logging"
+    logging = "logging"
   }
 }
