@@ -3,3 +3,6 @@ build/
 __pycache__
 .kube/
 .local/
+venv/
+.terraform*
+*.tfstate*
