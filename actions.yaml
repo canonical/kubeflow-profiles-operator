@@ -9,7 +9,7 @@ create-profile:
       description: the name of the new profile to be created
     resourcequota:
       type: string
-      description: (Optional) resource quota for the new profile
+      description: (Optional) resource quota for the new profile. This must be used in combination with the argument `--string args`.
   required: [username, profilename]
 
 initialise-profile:
