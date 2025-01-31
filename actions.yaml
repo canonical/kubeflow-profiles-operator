@@ -13,7 +13,7 @@ create-profile:
   required: [username, profilename]
 
 initialise-profile:
-  description: Apply configuration to an existing profile to allow using Minio, MLFlow, and Seldon.
+  description: Apply configuration to an existing profile to allow using Minio and MLflow.
   params:
     profilename:
       type: string
