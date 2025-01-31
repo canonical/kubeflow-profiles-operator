@@ -3,7 +3,6 @@
 """Integration tests for Kueflow Profiles Operator."""
 import json
 import logging
-from base64 import b64encode
 from pathlib import Path
 
 import lightkube
@@ -19,18 +18,10 @@ from charmed_kubeflow_chisme.testing import (
 )
 from lightkube import codecs
 from lightkube.generic_resource import create_global_resource, create_namespaced_resource
-from lightkube.models.meta_v1 import ObjectMeta
-from lightkube.resources.core_v1 import Namespace, Secret
+from lightkube.resources.core_v1 import Namespace
 from lightkube.types import PatchType
 from pytest_operator.plugin import OpsTest
-from tenacity import (
-    RetryError,
-    Retrying,
-    retry,
-    stop_after_attempt,
-    stop_after_delay,
-    wait_exponential,
-)
+from tenacity import retry, stop_after_delay, wait_exponential
 
 log = logging.getLogger(__name__)
 

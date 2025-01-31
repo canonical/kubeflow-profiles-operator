@@ -5,8 +5,6 @@ import json
 from unittest.mock import ANY, MagicMock, patch
 
 from lightkube.generic_resource import create_global_resource
-from lightkube.models.meta_v1 import ObjectMeta
-from lightkube.resources.core_v1 import Secret
 from ops.charm import ActionEvent
 from ops.model import ActiveStatus, WaitingStatus
 

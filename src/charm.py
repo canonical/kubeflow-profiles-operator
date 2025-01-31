@@ -18,8 +18,7 @@ from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from lightkube import ApiError, LoadResourceError, codecs
 from lightkube.generic_resource import create_global_resource, load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
-from lightkube.models.meta_v1 import ObjectMeta
-from lightkube.resources.core_v1 import Namespace, Secret
+from lightkube.resources.core_v1 import Namespace
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
 from ops.main import main
