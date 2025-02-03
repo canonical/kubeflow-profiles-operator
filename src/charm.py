@@ -18,8 +18,7 @@ from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from lightkube import ApiError, LoadResourceError, codecs
 from lightkube.generic_resource import create_global_resource, load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
-from lightkube.models.meta_v1 import ObjectMeta
-from lightkube.resources.core_v1 import Namespace, Secret
+from lightkube.resources.core_v1 import Namespace
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
 from ops.main import main
@@ -401,37 +400,6 @@ class KubeflowProfilesOperator(CharmBase):
             event.fail(
                 f"Failed to apply PodDefaults: CRD not defined. To fix, deploy admission webhook. Error: {e}"  # noqa E501
             )
-        self._copy_seldon_secret(profile_name, event)
-
-    def _copy_seldon_secret(self, namespace, event: ActionEvent):
-        """Copy Seldon deployment secret to the profile's namespace."""
-        seldon_secret = None
-        # check if seldon-core-mlflow integration secret exists in kubeflow namespace
-        try:
-            seldon_secret = self.k8s_resource_handler.lightkube_client.get(
-                Secret,
-                name="mlflow-server-seldon-init-container-s3-credentials",
-                namespace=self._namespace,
-            )
-        except ApiError as e:
-            event.log(f"seldon secret not found in kubeflow namespace. error:{e}")
-
-        if seldon_secret:
-            try:
-                self.k8s_resource_handler.lightkube_client.create(
-                    Secret(
-                        metadata=ObjectMeta(name="seldon-init-container-secret"),
-                        kind="Secret",
-                        apiVersion=seldon_secret.apiVersion,
-                        data=seldon_secret.data,
-                        type=seldon_secret.type,
-                    ),
-                    namespace=namespace,
-                )
-            except ApiError as e:
-                event.log(
-                    f"Failed to apply secret {seldon_secret.metadata.name} to namespace {namespace}. error:{e}"  # noqa E501
-                )
 
     def _apply_manifest(self, manifest, event: ActionEvent, namespace=None):
         """Apply manifest to namespace."""

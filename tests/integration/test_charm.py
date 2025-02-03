@@ -3,7 +3,6 @@
 """Integration tests for Kueflow Profiles Operator."""
 import json
 import logging
-from base64 import b64encode
 from pathlib import Path
 
 import lightkube
@@ -19,18 +18,10 @@ from charmed_kubeflow_chisme.testing import (
 )
 from lightkube import codecs
 from lightkube.generic_resource import create_global_resource, create_namespaced_resource
-from lightkube.models.meta_v1 import ObjectMeta
-from lightkube.resources.core_v1 import Namespace, Secret
+from lightkube.resources.core_v1 import Namespace
 from lightkube.types import PatchType
 from pytest_operator.plugin import OpsTest
-from tenacity import (
-    RetryError,
-    Retrying,
-    retry,
-    stop_after_attempt,
-    stop_after_delay,
-    wait_exponential,
-)
+from tenacity import retry, stop_after_delay, wait_exponential
 
 log = logging.getLogger(__name__)
 
@@ -195,67 +186,6 @@ async def test_initialise_profile_action(lightkube_client, profile, ops_test):
     validate_namespace_poddefaults(lightkube_client, profile_name)
 
 
-async def test_initialise_profile_action_copy_seldon_secret(lightkube_client, profile, ops_test):
-    """Test initialise profile action to copy seldon secret when secret is in the namespace."""
-    # get the namespace
-    namespace_name = ops_test.model.name
-
-    # create seldon secret
-    seldon_secret = Secret(
-        metadata=ObjectMeta(name="mlflow-server-seldon-init-container-s3-credentials"),
-        kind="Secret",
-        apiVersion="v1",
-        data=_b64_encode_dict(
-            {
-                "RCLONE_CONFIG_S3_TYPE": "s3",
-                "RCLONE_CONFIG_S3_PROVIDER": "minio",
-                "RCLONE_CONFIG_S3_ACCESS_KEY_ID": "minio",
-                "RCLONE_CONFIG_S3_SECRET_ACCESS_KEY": "minio123",
-                "RCLONE_CONFIG_S3_ENDPOINT": "http://minio.kubeflow.svc.cluster.local:9000",
-                "RCLONE_CONFIG_S3_ENV_AUTH": "false",
-            }
-        ),
-        type="Opaque",
-    )
-    lightkube_client.create(seldon_secret, namespace=namespace_name)
-
-    # wait for seldon secret to be created
-    try:
-        for attempt in Retrying(
-            stop=(stop_after_attempt(5) | stop_after_delay(30)),
-            wait=wait_exponential(multiplier=1, min=5, max=10),
-            reraise=True,
-        ):
-            with attempt:
-                lightkube_client.get(
-                    Secret,
-                    name="mlflow-server-seldon-init-container-s3-credentials",
-                    namespace=namespace_name,
-                )
-    except RetryError:
-        log.info(f"Test failed. Seldon secret was not found in {namespace_name} namespace.")
-
-    # run initialise profile action
-    action = (
-        await ops_test.model.applications[CHARM_NAME]
-        .units[0]
-        .run_action(
-            "initialise-profile",
-            profilename=profile,
-        )
-    )
-    action_result = await action.wait()
-
-    # assert secret is copied
-    new_secret = lightkube_client.get(
-        Secret,
-        name="seldon-init-container-secret",
-        namespace=profile,
-    )
-    assert action_result.status == "completed"
-    assert new_secret.data == seldon_secret.data
-
-
 # Helpers
 @pytest.fixture(scope="session")
 def lightkube_client() -> lightkube.Client:
@@ -362,12 +292,6 @@ def delete_all_from_yaml(yaml_file: str, lightkube_client: lightkube.Client = No
 
     for obj in codecs.load_all_yaml(yaml_text):
         lightkube_client.delete(type(obj), obj.metadata.name)
-
-
-def _b64_encode_dict(d):
-    """Return the dict with values being base64 encoded."""
-    # Why do we encode and decode in utf-8 first?
-    return {k: b64encode(v.encode("utf-8")).decode("utf-8") for k, v in d.items()}
 
 
 @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_delay(30), reraise=True)

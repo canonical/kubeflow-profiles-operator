@@ -5,8 +5,6 @@ import json
 from unittest.mock import ANY, MagicMock, patch
 
 from lightkube.generic_resource import create_global_resource
-from lightkube.models.meta_v1 import ObjectMeta
-from lightkube.resources.core_v1 import Secret
 from ops.charm import ActionEvent
 from ops.model import ActiveStatus, WaitingStatus
 
@@ -226,43 +224,3 @@ def test_on_initialise_profile_action(
     harness.charm.on_initialise_profile_action(event)
 
     configure_profile.assert_called_with(profile_name, event)
-
-
-def test_copy_seldon_secret(
-    harness,
-    mocked_kubernetes_service_patcher,
-    mocked_resource_handler,
-    mocked_lightkube_client,
-):
-    """Test that seldon secret is copied to the profile's namespace with the correct values."""
-    profile_name = "username"
-    seldon_secret = Secret(
-        metadata=ObjectMeta(name="mlflow-server-seldon-init-container-s3-credentials"),
-        kind="Secret",
-        apiVersion="v1",
-        data={
-            "RCLONE_CONFIG_S3_TYPE": "s3",
-            "RCLONE_CONFIG_S3_PROVIDER": "minio",
-            "RCLONE_CONFIG_S3_ACCESS_KEY_ID": "minio",
-            "RCLONE_CONFIG_S3_SECRET_ACCESS_KEY": "minio123",
-            "RCLONE_CONFIG_S3_ENDPOINT": "http://minio.kubeflow.svc.cluster.local:9000",
-            "RCLONE_CONFIG_S3_ENV_AUTH": "false",
-        },
-        type="Opaque",
-    )
-    mocked_lightkube_client.get.return_value = seldon_secret
-    event = MagicMock(spec=ActionEvent)
-    harness.begin()
-    harness.set_leader(True)
-    harness.charm.k8s_resource_handler.lightkube_client = mocked_lightkube_client
-    harness.charm._copy_seldon_secret(profile_name, event)
-    harness.charm.k8s_resource_handler.lightkube_client.create.assert_called_with(
-        Secret(
-            metadata=ObjectMeta(name="seldon-init-container-secret"),
-            kind="Secret",
-            apiVersion=seldon_secret.apiVersion,
-            data=seldon_secret.data,
-            type=seldon_secret.type,
-        ),
-        namespace=profile_name,
-    )
