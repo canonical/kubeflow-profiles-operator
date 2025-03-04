@@ -22,7 +22,7 @@ resources:
     type: oci-image
     description: Access Management image
     auto-fetch: true
-    upstream-source: docker.io/charmedkubeflow/kfam:1.10.0-rc.0-1759ff0
+    upstream-source: docker.io/charmedkubeflow/kfam:1.10.0-rc.1-32bf203
 provides:
   kubeflow-profiles:
     interface: k8s-service
