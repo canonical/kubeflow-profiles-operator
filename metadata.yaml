@@ -17,12 +17,12 @@ resources:
     type: oci-image
     description: Profile controller image
     auto-fetch: true
-    upstream-source: docker.io/charmedkubeflow/profile-controller:1.10.0-rc.1-518145f
+    upstream-source: docker.io/charmedkubeflow/profile-controller:1.10.0-7fcf726
   kfam-image:
     type: oci-image
     description: Access Management image
     auto-fetch: true
-    upstream-source: docker.io/charmedkubeflow/kfam:1.10.0-rc.1-32bf203
+    upstream-source: docker.io/charmedkubeflow/kfam:1.10.0-7fcf726
 provides:
   kubeflow-profiles:
     interface: k8s-service
