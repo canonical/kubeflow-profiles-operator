@@ -19,4 +19,7 @@ ops
 pytest
 pytest-mock
 pytest-lazy-fixture
--r requirements.in
+serialized-data-interface
+charmed-kubeflow-chisme
+lightkube
+cosl

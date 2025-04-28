@@ -12,7 +12,7 @@ bases:
 parts:
   charm:
     charm-python-packages: [setuptools, pip]
-    # Don't build from source because of
+    # Don't build from source because of https://github.com/canonical/charmcraft/issues/2259
     # Once it's resolved we should move those in requirements.in
     charm-binary-python-packages: [cosl, serialized-data-interface, charmed-kubeflow-chisme, lightkube]
     # Following lines are needed due to https://github.com/canonical/charmcraft/issues/1722
