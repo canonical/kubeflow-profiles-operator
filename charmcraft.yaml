@@ -14,7 +14,11 @@ parts:
     charm-python-packages: [setuptools, pip]
     # Don't build from source because of https://github.com/canonical/charmcraft/issues/2259
     # Once it's resolved we should move those in requirements.in
-    charm-binary-python-packages: [cosl, serialized-data-interface, charmed-kubeflow-chisme, lightkube]
+    charm-binary-python-packages:
+      - cosl==0.0.57
+      - serialized-data-interface==0.7.0
+      - charmed-kubeflow-chisme==0.4.6
+      - lightkube==0.17.1
     # Following lines are needed due to https://github.com/canonical/charmcraft/issues/1722
     build-snaps: [rustup]
     build-packages: [pkg-config, libffi-dev, libssl-dev]
