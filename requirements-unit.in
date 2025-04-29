@@ -19,6 +19,11 @@ ops
 pytest
 pytest-mock
 pytest-lazy-fixture
+# Added because of the following issues:
+# https://github.com/canonical/bundle-kubeflow/issues/1255
+# https://github.com/canonical/charmcraft/issues/2259
+# Once the above are resolved, we should remove those packages and
+# instead do: -r requirements.txt
 serialized-data-interface
 charmed-kubeflow-chisme
 lightkube
