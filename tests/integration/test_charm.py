@@ -31,6 +31,7 @@ ISTIO_PILOT_NAME = "istio-pilot"
 ISTIO_PILOT_CHANNEL = "1.24/stable"
 ISTIO_PILOT_TRUST = True
 
+
 @pytest.mark.abort_on_fail
 @pytest.mark.skip_if_deployed
 async def test_build_and_deploy(ops_test):
