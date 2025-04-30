@@ -27,7 +27,9 @@ log = logging.getLogger(__name__)
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 CHARM_NAME = METADATA["name"]
 ADMISSION_WEBHOOK_NAME = "admission-webhook"
-
+ISTIO_PILOT_NAME = "istio-pilot"
+ISTIO_PILOT_CHANNEL = "1.24/stable"
+ISTIO_PILOT_TRUST = True
 
 @pytest.mark.abort_on_fail
 @pytest.mark.skip_if_deployed
@@ -42,6 +44,14 @@ async def test_build_and_deploy(ops_test):
 
     await ops_test.model.wait_for_idle(
         apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
+    )
+
+    # The profile controller needs AuthorizationPolicies to create Profiles
+    # Let's just deploy istio-pilot to provide the k8s cluster with this CRD
+    await ops_test.model.deploy(
+        entity_url=ISTIO_PILOT_NAME,
+        channel=ISTIO_PILOT_CHANNEL,
+        trust=ISTIO_PILOT_TRUST,
     )
 
     # Deploying grafana-agent-k8s and add all relations
