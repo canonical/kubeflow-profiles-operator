@@ -16,6 +16,7 @@ from charmed_kubeflow_chisme.testing import (
     deploy_and_assert_grafana_agent,
     get_alert_rules,
 )
+from charms_dependencies import ISTIO_PILOT
 from lightkube import codecs
 from lightkube.generic_resource import create_global_resource
 from lightkube.resources.core_v1 import Namespace
@@ -27,10 +28,6 @@ log = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 CHARM_NAME = METADATA["name"]
-ADMISSION_WEBHOOK_NAME = "admission-webhook"
-ISTIO_PILOT_NAME = "istio-pilot"
-ISTIO_PILOT_CHANNEL = "1.24/stable"
-ISTIO_PILOT_TRUST = True
 
 CONFIG_DATA = yaml.safe_load(Path("./config.yaml").read_text())
 DEFAULT_SECURITY_POLICY = CONFIG_DATA["options"]["security-policy"]["default"]
@@ -54,9 +51,9 @@ async def test_build_and_deploy(ops_test):
     # The profile controller needs AuthorizationPolicies to create Profiles
     # Let's just deploy istio-pilot to provide the k8s cluster with this CRD
     await ops_test.model.deploy(
-        entity_url=ISTIO_PILOT_NAME,
-        channel=ISTIO_PILOT_CHANNEL,
-        trust=ISTIO_PILOT_TRUST,
+        entity_url=ISTIO_PILOT.charm,
+        channel=ISTIO_PILOT.channel,
+        trust=ISTIO_PILOT.trust,
     )
 
     # Deploying grafana-agent-k8s and add all relations
