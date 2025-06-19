@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 ops
 tenacity
-# Commented because of https://github.com/canonical/charmcraft/issues/2259
 serialized-data-interface
 charmed-kubeflow-chisme
 lightkube
