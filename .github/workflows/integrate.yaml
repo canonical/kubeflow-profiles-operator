@@ -65,10 +65,6 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5.6.0
-        with:
-          python-version: "3.12"
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
