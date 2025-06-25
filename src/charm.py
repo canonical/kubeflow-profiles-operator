@@ -17,9 +17,9 @@ from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from lightkube import ApiError, codecs
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
+from ops import main
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
-from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, Container, MaintenanceStatus, WaitingStatus
 from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
