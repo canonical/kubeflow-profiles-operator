@@ -2,9 +2,10 @@
 # See LICENSE file for licensing details.
 ops
 tenacity
-# Commented because of https://github.com/canonical/charmcraft/issues/2259
-# serialized-data-interface
-# charmed-kubeflow-chisme
-# lightkube
+serialized-data-interface
+# "charmed-kubeflow-chisme" pinned to avoid closed "latest" tracks with COS charms, see:
+# https://github.com/canonical/charmed-kubeflow-chisme/issues/155
+charmed-kubeflow-chisme>=0.4.11
+lightkube
 # from loki_k8s.v1.loki_push_api.py
-# cosl
+cosl
