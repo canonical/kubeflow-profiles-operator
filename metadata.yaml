@@ -46,3 +46,7 @@ requires:
   logging:
     interface: loki_push_api
     optional: true
+  profiles-backup-config:
+    interface: velero_backup_config
+  user-workloads-backup-config:
+    interface: velero_backup_config

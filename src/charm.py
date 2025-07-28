@@ -6,6 +6,7 @@
 
 import logging
 from pathlib import Path
+from typing import List
 
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
@@ -14,9 +15,10 @@ from charmed_kubeflow_chisme.pebble import update_layer
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from charms.velero_libs.v0.velero_backup_config import VeleroBackupRequirer, VeleroBackupSpec
 from lightkube import ApiError, codecs
 from lightkube.generic_resource import load_in_cluster_generic_resources
-from lightkube.models.core_v1 import ServicePort
+from lightkube.models.core_v1 import Namespace, ServicePort
 from ops import main
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
@@ -27,6 +29,58 @@ from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, ge
 K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
 NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
 PROFILE_CONFIG_FILES = ["src/templates/allow-minio.yaml", "src/templates/allow-mlflow.yaml"]
+
+K8S_USER_WORKLOAD_RESOURCECS = [
+    "persistentvolumeclaims",
+    "persistentvolumes",
+    "secrets",
+    "authcodes.dex.coreos.com",
+    "authorizationpolicies.security.istio.io",
+    "certificaterequests.cert-manager.io",
+    "certificates.cert-manager.io",
+    "challenges.acme.cert-manager.io",
+    "clusterissuers.cert-manager.io",
+    "clusterservingruntimes.serving.kserve.io",
+    "clusterstoragecontainers.serving.kserve.io",
+    "compositecontrollers.metacontroller.k8s.io",
+    "controllerrevisions.metacontroller.k8s.io",
+    "cron",
+    "decoratorcontrollers.metacontroller.k8s.io",
+    "destinationrules.networking.istio.io",
+    "envoyfilters.networking.istio.io",
+    "experiments.kubeflow.org",
+    "gateways.networking.istio.io",
+    "inferencegraphs.serving.kserve.io",
+    "inferenceservices.serving.kserve.io",
+    "issuers.cert-manager.io",
+    "mpijobs.kubeflow.org",
+    "mxjobs.kubeflow.org",
+    "notebooks.kubeflow.org",
+    "orders.acme.cert-manager.io",
+    "paddlejobs.kubeflow.org",
+    "peerauthentications.security.istio.io",
+    "poddefaults.kubeflow.org",
+    "profiles.kubeflow.org",
+    "proxyconfigs.networking.istio.io",
+    "pvcviewers.kubeflow.org",
+    "pytorchjobs.kubeflow.org",
+    "requestauthentications.security.istio.io",
+    "scheduledworkflows.kubeflow.org",
+    "serviceentries.networking.istio.io",
+    "servingruntimes.serving.kserve.io",
+    "sidecars.networking.istio.io",
+    "suggestions.kubeflow.org",
+    "telemetries.telemetry.istio.io",
+    "tensorboards.tensorboard.kubeflow.org",
+    "tfjobs.kubeflow.org",
+    "trainedmodels.serving.kserve.io",
+    "trials.kubeflow.org",
+    "viewers.kubeflow.org",
+    "wasmplugins.extensions.istio.io",
+    "workloadentries.networking.istio.io",
+    "workloadgroups.networking.istio.io",
+    "xgboostjobs.kubeflow.org",
+]
 
 
 class KubeflowProfilesOperator(CharmBase):
@@ -57,8 +111,9 @@ class KubeflowProfilesOperator(CharmBase):
 
         self._namespace = self.model.name
         self._name = self.model.app.name
-        self._lightkube_field_manager = "lightkube"
         self._k8s_resource_handler = None
+        self._lightkube_field_manager = "lightkube"
+        self._profile_namespaces = self._get_profile_namespaces()
 
         # service account names are hardcoded
         # TODO: implement relation and get from relation data
@@ -93,6 +148,25 @@ class KubeflowProfilesOperator(CharmBase):
                 self.on.kubeflow_profiles_pebble_ready,
                 self.on.kubeflow_kfam_pebble_ready,
             ],
+        )
+
+        # setup Velero backup relations
+        self.profiles_backup = VeleroBackupRequirer(
+            self,
+            app_name=self._name,
+            relation_name="profiles-backup-config",
+            spec=VeleroBackupSpec(include_resources=["profiles.kubeflow.org"]),
+        )
+        self.user_workload_backup = VeleroBackupRequirer(
+            self,
+            app_name=self._name,
+            relation_name="user-workloads-backup-config",
+            spec=VeleroBackupSpec(
+                include_namespaces=self._profile_namespaces if self._profile_namespaces else None,
+                include_resources=(
+                    K8S_USER_WORKLOAD_RESOURCECS if self._profile_namespaces else None
+                ),
+            ),
         )
 
     @property
@@ -203,6 +277,20 @@ class KubeflowProfilesOperator(CharmBase):
                 },
             }
         )
+
+    def _get_profile_namespaces(self) -> List[str]:
+        """Get the list of profile namespaces."""
+        try:
+            namespaces = self.k8s_resource_handler.lightkube_client.list(
+                Namespace, labels={"app.kubernetes.io/part-of": "kubeflow-profile"}
+            )
+            return [
+                ns.metadata.name
+                for ns in namespaces
+                if ns.metadata and ns.metadata.name and ns.metadata.name != "kubeflow"
+            ]
+        except ApiError as e:
+            raise GenericCharmRuntimeError("Failed to list profile namespaces") from e
 
     def _deploy_k8s_resources(self):
         """Deploy K8S resources."""
