@@ -18,7 +18,8 @@ from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.velero_libs.v0.velero_backup_config import VeleroBackupRequirer, VeleroBackupSpec
 from lightkube import ApiError, codecs
 from lightkube.generic_resource import load_in_cluster_generic_resources
-from lightkube.models.core_v1 import Namespace, ServicePort
+from lightkube.models.core_v1 import ServicePort
+from lightkube.resources.core_v1 import Namespace
 from ops import main
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
@@ -167,6 +168,7 @@ class KubeflowProfilesOperator(CharmBase):
                     K8S_USER_WORKLOAD_RESOURCECS if self._profile_namespaces else None
                 ),
             ),
+            refresh_event=[self.on.config_changed, self.on.update_status],
         )
 
     @property
