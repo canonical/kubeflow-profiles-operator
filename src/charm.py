@@ -158,18 +158,17 @@ class KubeflowProfilesOperator(CharmBase):
             relation_name="profiles-backup-config",
             spec=VeleroBackupSpec(include_resources=["profiles.kubeflow.org"]),
         )
-        self.user_workload_backup = VeleroBackupRequirer(
-            self,
-            app_name=self._name,
-            relation_name="user-workloads-backup-config",
-            spec=VeleroBackupSpec(
-                include_namespaces=self._profile_namespaces if self._profile_namespaces else None,
-                include_resources=(
-                    K8S_USER_WORKLOAD_RESOURCECS if self._profile_namespaces else None
+        if self._profile_namespaces:
+            self.user_workload_backup = VeleroBackupRequirer(
+                self,
+                app_name=self._name,
+                relation_name="user-workloads-backup-config",
+                spec=VeleroBackupSpec(
+                    include_namespaces=self._profile_namespaces,
+                    include_resources=K8S_USER_WORKLOAD_RESOURCECS
                 ),
-            ),
-            refresh_event=[self.on.config_changed, self.on.update_status],
-        )
+                refresh_event=[self.on.config_changed, self.on.update_status],
+            )
 
     @property
     def profiles_container(self):
