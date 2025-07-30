@@ -15,7 +15,7 @@ from charmed_kubeflow_chisme.pebble import update_layer
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-from charms.velero_libs.v0.velero_backup_config import VeleroBackupRequirer, VeleroBackupSpec
+from charms.velero_libs.v0.velero_backup_config import VeleroBackupProvider, VeleroBackupSpec
 from lightkube import ApiError, codecs
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
@@ -152,20 +152,22 @@ class KubeflowProfilesOperator(CharmBase):
         )
 
         # setup Velero backup relations
-        self.profiles_backup = VeleroBackupRequirer(
+        self.profiles_backup = VeleroBackupProvider(
             self,
             app_name=self._name,
             relation_name="profiles-backup-config",
+            model=self._namespace,
             spec=VeleroBackupSpec(include_resources=["profiles.kubeflow.org"]),
         )
         if self._profile_namespaces:
-            self.user_workload_backup = VeleroBackupRequirer(
+            self.user_workload_backup = VeleroBackupProvider(
                 self,
                 app_name=self._name,
                 relation_name="user-workloads-backup-config",
+                model=self._namespace,
                 spec=VeleroBackupSpec(
                     include_namespaces=self._profile_namespaces,
-                    include_resources=K8S_USER_WORKLOAD_RESOURCECS
+                    include_resources=K8S_USER_WORKLOAD_RESOURCECS,
                 ),
                 refresh_event=[self.on.config_changed, self.on.update_status],
             )

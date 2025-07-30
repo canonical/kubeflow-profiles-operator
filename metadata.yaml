@@ -42,11 +42,11 @@ provides:
     __schema_source: https://raw.githubusercontent.com/canonical/operator-schemas/master/k8s-service.yaml
   metrics-endpoint:
     interface: prometheus_scrape
-requires:
-  logging:
-    interface: loki_push_api
-    optional: true
   profiles-backup-config:
     interface: velero_backup_config
   user-workloads-backup-config:
     interface: velero_backup_config
+requires:
+  logging:
+    interface: loki_push_api
+    optional: true
