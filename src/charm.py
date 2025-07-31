@@ -154,17 +154,13 @@ class KubeflowProfilesOperator(CharmBase):
         # setup Velero backup relations
         self.profiles_backup = VeleroBackupProvider(
             self,
-            app_name=self._name,
             relation_name="profiles-backup-config",
-            model=self._namespace,
             spec=VeleroBackupSpec(include_resources=["profiles.kubeflow.org"]),
         )
         if self._profile_namespaces:
             self.user_workload_backup = VeleroBackupProvider(
                 self,
-                app_name=self._name,
                 relation_name="user-workloads-backup-config",
-                model=self._namespace,
                 spec=VeleroBackupSpec(
                     include_namespaces=self._profile_namespaces,
                     include_resources=K8S_USER_WORKLOAD_RESOURCECS,
