@@ -27,7 +27,7 @@ from ops.model import ActiveStatus, BlockedStatus, Container, MaintenanceStatus,
 from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
-K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
+K8S_RESOURCE_FILES = ["src/templates/crds.yaml.j2"]
 NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
 PROFILE_CONFIG_FILES = ["src/templates/allow-minio.yaml", "src/templates/allow-mlflow.yaml"]
 
