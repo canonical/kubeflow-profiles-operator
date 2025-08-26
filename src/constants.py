@@ -1,0 +1,58 @@
+"""Constants for the Kubeflow Profiles Operator charm."""
+
+K8S_RESOURCE_FILES = ["src/templates/crds.yaml.j2"]
+NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
+PROFILE_CONFIG_FILES = ["src/templates/allow-minio.yaml", "src/templates/allow-mlflow.yaml"]
+
+# List of resources for Velera backup/restore of user workloads
+# See: https://github.com/canonical/bundle-kubeflow/issues/1197
+K8S_USER_WORKLOAD_RESOURCECS = [
+    "persistentvolumeclaims",
+    "persistentvolumes",
+    "secrets",
+    "authcodes.dex.coreos.com",
+    "authorizationpolicies.security.istio.io",
+    "certificaterequests.cert-manager.io",
+    "certificates.cert-manager.io",
+    "challenges.acme.cert-manager.io",
+    "clusterissuers.cert-manager.io",
+    "clusterservingruntimes.serving.kserve.io",
+    "clusterstoragecontainers.serving.kserve.io",
+    "compositecontrollers.metacontroller.k8s.io",
+    "controllerrevisions.metacontroller.k8s.io",
+    "cron",
+    "decoratorcontrollers.metacontroller.k8s.io",
+    "destinationrules.networking.istio.io",
+    "envoyfilters.networking.istio.io",
+    "experiments.kubeflow.org",
+    "gateways.networking.istio.io",
+    "inferencegraphs.serving.kserve.io",
+    "inferenceservices.serving.kserve.io",
+    "issuers.cert-manager.io",
+    "mpijobs.kubeflow.org",
+    "mxjobs.kubeflow.org",
+    "notebooks.kubeflow.org",
+    "orders.acme.cert-manager.io",
+    "paddlejobs.kubeflow.org",
+    "peerauthentications.security.istio.io",
+    "poddefaults.kubeflow.org",
+    "proxyconfigs.networking.istio.io",
+    "pvcviewers.kubeflow.org",
+    "pytorchjobs.kubeflow.org",
+    "requestauthentications.security.istio.io",
+    "scheduledworkflows.kubeflow.org",
+    "serviceentries.networking.istio.io",
+    "servingruntimes.serving.kserve.io",
+    "sidecars.networking.istio.io",
+    "suggestions.kubeflow.org",
+    "telemetries.telemetry.istio.io",
+    "tensorboards.tensorboard.kubeflow.org",
+    "tfjobs.kubeflow.org",
+    "trainedmodels.serving.kserve.io",
+    "trials.kubeflow.org",
+    "viewers.kubeflow.org",
+    "wasmplugins.extensions.istio.io",
+    "workloadentries.networking.istio.io",
+    "workloadgroups.networking.istio.io",
+    "xgboostjobs.kubeflow.org",
+]

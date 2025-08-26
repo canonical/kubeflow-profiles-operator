@@ -27,61 +27,7 @@ from ops.model import ActiveStatus, BlockedStatus, Container, MaintenanceStatus,
 from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
-K8S_RESOURCE_FILES = ["src/templates/crds.yaml.j2"]
-NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
-PROFILE_CONFIG_FILES = ["src/templates/allow-minio.yaml", "src/templates/allow-mlflow.yaml"]
-
-K8S_USER_WORKLOAD_RESOURCECS = [
-    "persistentvolumeclaims",
-    "persistentvolumes",
-    "secrets",
-    "authcodes.dex.coreos.com",
-    "authorizationpolicies.security.istio.io",
-    "certificaterequests.cert-manager.io",
-    "certificates.cert-manager.io",
-    "challenges.acme.cert-manager.io",
-    "clusterissuers.cert-manager.io",
-    "clusterservingruntimes.serving.kserve.io",
-    "clusterstoragecontainers.serving.kserve.io",
-    "compositecontrollers.metacontroller.k8s.io",
-    "controllerrevisions.metacontroller.k8s.io",
-    "cron",
-    "decoratorcontrollers.metacontroller.k8s.io",
-    "destinationrules.networking.istio.io",
-    "envoyfilters.networking.istio.io",
-    "experiments.kubeflow.org",
-    "gateways.networking.istio.io",
-    "inferencegraphs.serving.kserve.io",
-    "inferenceservices.serving.kserve.io",
-    "issuers.cert-manager.io",
-    "mpijobs.kubeflow.org",
-    "mxjobs.kubeflow.org",
-    "notebooks.kubeflow.org",
-    "orders.acme.cert-manager.io",
-    "paddlejobs.kubeflow.org",
-    "peerauthentications.security.istio.io",
-    "poddefaults.kubeflow.org",
-    "profiles.kubeflow.org",
-    "proxyconfigs.networking.istio.io",
-    "pvcviewers.kubeflow.org",
-    "pytorchjobs.kubeflow.org",
-    "requestauthentications.security.istio.io",
-    "scheduledworkflows.kubeflow.org",
-    "serviceentries.networking.istio.io",
-    "servingruntimes.serving.kserve.io",
-    "sidecars.networking.istio.io",
-    "suggestions.kubeflow.org",
-    "telemetries.telemetry.istio.io",
-    "tensorboards.tensorboard.kubeflow.org",
-    "tfjobs.kubeflow.org",
-    "trainedmodels.serving.kserve.io",
-    "trials.kubeflow.org",
-    "viewers.kubeflow.org",
-    "wasmplugins.extensions.istio.io",
-    "workloadentries.networking.istio.io",
-    "workloadgroups.networking.istio.io",
-    "xgboostjobs.kubeflow.org",
-]
+from constants import K8S_RESOURCE_FILES, K8S_USER_WORKLOAD_RESOURCECS, NAMESPACE_LABELS_FILE
 
 
 class KubeflowProfilesOperator(CharmBase):
@@ -114,7 +60,6 @@ class KubeflowProfilesOperator(CharmBase):
         self._name = self.model.app.name
         self._k8s_resource_handler = None
         self._lightkube_field_manager = "lightkube"
-        self._profile_namespaces = self._get_profile_namespaces()
 
         # service account names are hardcoded
         # TODO: implement relation and get from relation data
@@ -157,12 +102,13 @@ class KubeflowProfilesOperator(CharmBase):
             relation_name="profiles-backup-config",
             spec=VeleroBackupSpec(include_resources=["profiles.kubeflow.org"]),
         )
-        if self._profile_namespaces:
+        profile_namespaces = self._get_profile_namespaces()
+        if profile_namespaces:
             self.user_workload_backup = VeleroBackupProvider(
                 self,
                 relation_name="user-workloads-backup-config",
                 spec=VeleroBackupSpec(
-                    include_namespaces=self._profile_namespaces,
+                    include_namespaces=profile_namespaces,
                     include_resources=K8S_USER_WORKLOAD_RESOURCECS,
                 ),
                 refresh_event=[self.on.config_changed, self.on.update_status],
