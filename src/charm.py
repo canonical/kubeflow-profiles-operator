@@ -27,7 +27,11 @@ from ops.model import ActiveStatus, BlockedStatus, Container, MaintenanceStatus,
 from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
-from constants import K8S_RESOURCE_FILES, K8S_USER_WORKLOAD_RESOURCECS, NAMESPACE_LABELS_FILE
+from constants import (
+    K8S_RESOURCE_FILES,
+    K8S_USER_WORKLOAD_EXCLUDE_RESOURCECS,
+    NAMESPACE_LABELS_FILE,
+)
 
 
 class KubeflowProfilesOperator(CharmBase):
@@ -109,7 +113,7 @@ class KubeflowProfilesOperator(CharmBase):
                 relation_name="user-workloads-backup-config",
                 spec=VeleroBackupSpec(
                     include_namespaces=profile_namespaces,
-                    include_resources=K8S_USER_WORKLOAD_RESOURCECS,
+                    exclude_resources=K8S_USER_WORKLOAD_EXCLUDE_RESOURCECS,
                 ),
                 refresh_event=[self.on.config_changed, self.on.update_status],
             )
