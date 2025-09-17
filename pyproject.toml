@@ -49,7 +49,7 @@ optional = true
 charmed-kubeflow-chisme = ">=0.4.11"
 cosl = "^1.0.0"
 lightkube = "^0.17.1"
-ops = "^2.17.1"
+ops = "^3.0.0"
 serialized-data-interface = "^0.7.0"
 tenacity = "^9.0.0"
 
@@ -80,7 +80,7 @@ optional = true
 [tool.poetry.group.unit.dependencies]
 coverage = "^7.6.1"
 lightkube = "^0.17.1"
-ops = "^2.17.1"
+ops = "^3.0.0"
 pytest = "^8.3.4"
 pytest-lazy-fixture = "^0.6.3"
 pytest-mock = "^3.14.0"
