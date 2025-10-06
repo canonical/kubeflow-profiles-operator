@@ -6,6 +6,7 @@
 
 import logging
 from pathlib import Path
+from typing import List
 
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
@@ -14,19 +15,23 @@ from charmed_kubeflow_chisme.pebble import update_layer
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from charms.velero_libs.v0.velero_backup_config import VeleroBackupProvider, VeleroBackupSpec
 from lightkube import ApiError, codecs
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
+from lightkube.resources.core_v1 import Namespace
+from ops import main
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
-from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, Container, MaintenanceStatus, WaitingStatus
 from ops.pebble import ChangeError, Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
-K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2", "src/templates/crds.yaml.j2"]
-NAMESPACE_LABELS_FILE = "src/templates/namespace-labels.yaml"
-PROFILE_CONFIG_FILES = ["src/templates/allow-minio.yaml", "src/templates/allow-mlflow.yaml"]
+from constants import (
+    K8S_RESOURCE_FILES,
+    K8S_USER_WORKLOAD_EXCLUDE_RESOURCECS,
+    NAMESPACE_LABELS_FILE,
+)
 
 
 class KubeflowProfilesOperator(CharmBase):
@@ -57,8 +62,8 @@ class KubeflowProfilesOperator(CharmBase):
 
         self._namespace = self.model.name
         self._name = self.model.app.name
-        self._lightkube_field_manager = "lightkube"
         self._k8s_resource_handler = None
+        self._lightkube_field_manager = "lightkube"
 
         # service account names are hardcoded
         # TODO: implement relation and get from relation data
@@ -94,6 +99,24 @@ class KubeflowProfilesOperator(CharmBase):
                 self.on.kubeflow_kfam_pebble_ready,
             ],
         )
+
+        # setup Velero backup relations
+        self.profiles_backup = VeleroBackupProvider(
+            self,
+            relation_name="profiles-backup-config",
+            spec=VeleroBackupSpec(include_resources=["profiles.kubeflow.org"]),
+        )
+        profile_namespaces = self._get_profile_namespaces()
+        if profile_namespaces:
+            self.user_workload_backup = VeleroBackupProvider(
+                self,
+                relation_name="user-workloads-backup-config",
+                spec=VeleroBackupSpec(
+                    include_namespaces=profile_namespaces,
+                    exclude_resources=K8S_USER_WORKLOAD_EXCLUDE_RESOURCECS,
+                ),
+                refresh_event=[self.on.config_changed, self.on.update_status],
+            )
 
     @property
     def profiles_container(self):
@@ -203,6 +226,20 @@ class KubeflowProfilesOperator(CharmBase):
                 },
             }
         )
+
+    def _get_profile_namespaces(self) -> List[str]:
+        """Get the list of profile namespaces."""
+        try:
+            namespaces = self.k8s_resource_handler.lightkube_client.list(
+                Namespace, labels={"app.kubernetes.io/part-of": "kubeflow-profile"}
+            )
+            return [
+                ns.metadata.name
+                for ns in namespaces
+                if ns.metadata and ns.metadata.name and ns.metadata.name != "kubeflow"
+            ]
+        except ApiError as e:
+            raise GenericCharmRuntimeError("Failed to list profile namespaces") from e
 
     def _deploy_k8s_resources(self):
         """Deploy K8S resources."""
