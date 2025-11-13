@@ -16,6 +16,7 @@ from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.velero_libs.v0.velero_backup_config import VeleroBackupProvider, VeleroBackupSpec
+import jinja2
 from lightkube import ApiError, codecs
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
@@ -32,6 +33,7 @@ from constants import (
     K8S_USER_WORKLOAD_EXCLUDE_RESOURCECS,
     NAMESPACE_LABELS_FILE,
 )
+from models import validate_config
 
 
 class KubeflowProfilesOperator(CharmBase):
@@ -45,9 +47,22 @@ class KubeflowProfilesOperator(CharmBase):
 
         self.log = logging.getLogger(__name__)
 
+        # Validate all config options
+        try:
+            config_data = {
+                "port": self.model.config["port"],
+                "manager_port": self.model.config["manager-port"],
+                "security_policy": self.model.config["security-policy"]
+            }
+            validate_config(config_data)
+        except ErrorWithStatus as e:
+            self.log.error(e.msg)
+            self.unit.status = e.status
+            return
+        
         self._manager_port = self.model.config["manager-port"]
         self._kfam_port = self.model.config["port"]
-
+        self._security_policy = self.model.config["security-policy"]
         manager_port = ServicePort(int(self._manager_port), name="manager")
         kfam_port = ServicePort(int(self._kfam_port), name="http")
         self.service_patcher = KubernetesServicePatch(
@@ -274,13 +289,13 @@ class KubeflowProfilesOperator(CharmBase):
         Push the namespace labels file to the container
         Add the Pebble layer and Replan
         """
+        self.log.warning("Calling update_profiles_layer")
         if not self.profiles_container.can_connect():
             raise ErrorWithStatus("Waiting for pod startup to complete", MaintenanceStatus)
 
         current_layer = self.profiles_container.get_plan()
 
         if current_layer.services != self._profiles_pebble_layer.services:
-            self._push_namespace_labels()
             self.profiles_container.add_layer(
                 self._profiles_container_name, self._profiles_pebble_layer, combine=True
             )
@@ -289,6 +304,7 @@ class KubeflowProfilesOperator(CharmBase):
                 self.profiles_container.replan()
             except ChangeError as e:
                 raise GenericCharmRuntimeError("Failed to replan") from e
+        self._push_namespace_labels()
 
     def _on_profiles_pebble_ready(self, event):
         """Update the started Profiles container."""
@@ -302,8 +318,7 @@ class KubeflowProfilesOperator(CharmBase):
 
     def _push_namespace_labels(self):
         """Push namespace labels to Profile container."""
-        with open(NAMESPACE_LABELS_FILE, encoding="utf-8") as labels_file:
-            labels = labels_file.read()
+        labels = self._render_namespace_labels_template()
         self.profiles_container.push(
             "/etc/profile-controller/namespace-labels.yaml", labels, make_dirs=True
         )
@@ -364,6 +379,17 @@ class KubeflowProfilesOperator(CharmBase):
                 event.log(
                     f"Failed to apply manifest: {obj.metadata.name} to namespace: {namespace}. Error: {e}"  # noqa E501
                 )
+
+    def _render_namespace_labels_template(self) -> dict[str, str]:
+        """
+        Return a rendered dict of using the charm's config options as the context.
+        """
+        with open(NAMESPACE_LABELS_FILE, encoding="utf-8") as labels_file:
+            labels = labels_file.read()
+        template = jinja2.Template(labels)
+        security_value = self._security_policy
+        rendered = template.render(security_policy=security_value)
+        return rendered
 
     def _safe_load_file_to_text(self, filename: str):
         """Return the contents of filename if it is an existing file, else it returns filename."""

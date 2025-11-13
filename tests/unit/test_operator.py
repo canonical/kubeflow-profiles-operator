@@ -3,7 +3,8 @@
 """Unit tests. Harness and Mocks are defined in test_operator_fixtures.py."""
 from unittest.mock import ANY, patch
 
-from ops.model import ActiveStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+import pytest
 
 
 def test_log_forwarding(
@@ -42,6 +43,65 @@ def test_not_leader(
     harness.container_pebble_ready("kubeflow-profiles")
     harness.container_pebble_ready("kubeflow-kfam")
     assert harness.charm.model.unit.status == WaitingStatus("Waiting for leadership")
+
+
+@pytest.mark.parametrize("invalid_port",
+    [
+        80,
+        100000
+    ]
+)
+def test_invalid_port(
+        harness,
+        mocked_kubernetes_service_patcher,
+        mocked_resource_handler,
+        invalid_port
+):
+    """Test that the charm is properly blocking on invalid port."""
+    harness.set_leader(True)
+    harness.update_config({"port": invalid_port})
+    harness.begin_with_initial_hooks()
+    assert isinstance(harness.charm.model.unit.status, BlockedStatus)
+    assert (
+        "Invalid config:" in harness.charm.model.unit.status.message
+    )
+
+
+@pytest.mark.parametrize("invalid_port",
+    [
+        80,
+        100000
+    ]
+)    
+def test_invalid_manager_port(
+        harness,
+        mocked_kubernetes_service_patcher,
+        mocked_resource_handler,
+        invalid_port
+):
+    """Test that the charm is properly blocking on an invalid manager port."""
+    harness.set_leader(True)
+    harness.update_config({"manager-port": invalid_port})
+    harness.begin_with_initial_hooks()
+    assert isinstance(harness.charm.model.unit.status, BlockedStatus)
+    assert (
+        "Invalid config:" in harness.charm.model.unit.status.message
+    )
+
+
+def test_invalid_security_policy(
+        harness,
+        mocked_kubernetes_service_patcher,
+        mocked_resource_handler,
+):
+    """Test that the charm is properly blocking on invalid security policy."""
+    harness.set_leader(True)
+    harness.update_config({"security-policy": "invalid-value"})
+    harness.begin_with_initial_hooks()
+    assert isinstance(harness.charm.model.unit.status, BlockedStatus)
+    assert (
+        "Invalid config:" in harness.charm.model.unit.status.message
+    )
 
 
 def test_profiles_container_running(
