@@ -4,6 +4,7 @@
 import logging
 from pathlib import Path
 
+import jinja2
 import lightkube
 import pytest
 import requests
@@ -27,6 +28,9 @@ log = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 CHARM_NAME = METADATA["name"]
+
+CONFIG_DATA = yaml.safe_load(Path("./config.yaml").read_text())
+DEFAULT_SECURITY_POLICY = CONFIG_DATA["options"]["security-policy"]["default"]
 
 
 @pytest.mark.abort_on_fail
@@ -224,7 +228,7 @@ def delete_all_from_yaml(yaml_file: str, lightkube_client: lightkube.Client = No
 def validate_profile_namespace(
     client: lightkube.Client,
     profile_name: str,
-    namespace_label_file: str = "./src/templates/namespace-labels.yaml",
+    namespace_label_file: str = "./src/templates/namespace-labels.yaml.j2",
 ):
     """Validate that a namespace for a Profile exists and has the expected properties.
 
@@ -232,8 +236,11 @@ def validate_profile_namespace(
     namespace
     """
     # Get required labels
-    namespace_label_file = Path(namespace_label_file)
-    namespace_labels = yaml.safe_load(namespace_label_file.read_text())
+    with open(namespace_label_file, encoding="utf-8") as labels_file:
+            labels = labels_file.read()
+    template = jinja2.Template(labels)
+    rendered_string = template.render(security_policy=DEFAULT_SECURITY_POLICY)
+    namespace_labels = yaml.safe_load(rendered_string)
 
     # Check namespace exists and has labels
     namespace = client.get(Namespace, profile_name)

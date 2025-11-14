@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import List
 
+import jinja2
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
@@ -16,7 +17,6 @@ from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.velero_libs.v0.velero_backup_config import VeleroBackupProvider, VeleroBackupSpec
-import jinja2
 from lightkube import ApiError, codecs
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
