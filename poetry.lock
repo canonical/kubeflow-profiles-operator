@@ -2452,6 +2452,21 @@ pytest = "*"
 typer = "0.7.0"
 
 [[package]]
+name = "pytest-lazy-fixtures"
+version = "1.4.0"
+description = "Allows you to use fixtures in @pytest.mark.parametrize."
+optional = false
+python-versions = ">=3.8"
+groups = ["unit"]
+files = [
+    {file = "pytest_lazy_fixtures-1.4.0-py3-none-any.whl", hash = "sha256:c5db4506fa0ade5887189d1a18857fec4c329b4f49043fef6732c67c9553389a"},
+    {file = "pytest_lazy_fixtures-1.4.0.tar.gz", hash = "sha256:f544b60c96b909b307558a62cc1f28f026f11e9f03d7f583a1dc636de3dbcb10"},
+]
+
+[package.dependencies]
+pytest = ">=7"
+
+[[package]]
 name = "pytest-mock"
 version = "3.14.1"
 description = "Thin-wrapper around the mock package for easier use with pytest"
@@ -3182,4 +3197,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "0dc58feae07fba6a3e72309ce6ed087877e90c64c84f57d441b2fced4898a885"
+content-hash = "f83ed0a9bec3094c87c805ef404e1cc2b1c8500007977aacd8304ac4f0f372e4"
