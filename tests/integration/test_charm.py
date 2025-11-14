@@ -112,6 +112,17 @@ async def test_config_option_propagation(ops_test, lightkube_client, profile):
     profile_name = profile
     validate_profile_namespace(lightkube_client, profile_name, new_security_policy)
 
+    # Change back to the default value
+    await ops_test.model.applications[CHARM_NAME].set_config(
+        {"security-policy": DEFAULT_SECURITY_POLICY}
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
+    )
+
+    profile_name = profile
+    validate_profile_namespace(lightkube_client, profile_name, DEFAULT_SECURITY_POLICY)
+
 
 async def test_health_check_profiles(ops_test):
     """Test whether the profiles health check endpoint responds with 200."""
