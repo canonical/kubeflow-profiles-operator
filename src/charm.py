@@ -291,7 +291,6 @@ class KubeflowProfilesOperator(CharmBase):
         Push the namespace labels file to the container
         Add the Pebble layer and Replan
         """
-        self.log.warning("Calling update_profiles_layer")
         if not self.profiles_container.can_connect():
             raise ErrorWithStatus("Waiting for pod startup to complete", MaintenanceStatus)
 
