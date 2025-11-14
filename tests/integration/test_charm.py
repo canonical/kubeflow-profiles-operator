@@ -95,7 +95,21 @@ async def test_metrics_enpoint(ops_test):
 async def test_profile_creation(lightkube_client, profile):
     """Test whether a namespace was created for this profile."""
     profile_name = profile
-    validate_profile_namespace(lightkube_client, profile_name)
+    validate_profile_namespace(lightkube_client, profile_name, DEFAULT_SECURITY_POLICY)
+
+
+async def test_config_option_propagation(lightkube_client, profile):
+    """Test that changes to the security policy are properly propagated."""
+    NEW_SECURITY_POLICY = "baseline"
+    await ops_test.model.applications[CHARM_NAME].set_config({"security-policy": NEW_SECURITY_POLICY})
+
+    await ops_test.model.wait_for_idle(
+        apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
+    )
+
+    profile_name = profile
+    validate_profile_namespace(lightkube_client, profile_name, NEW_SECURITY_POLICY)
+    
 
 
 async def test_health_check_profiles(ops_test):
@@ -229,6 +243,7 @@ def validate_profile_namespace(
     client: lightkube.Client,
     profile_name: str,
     namespace_label_file: str = "./src/templates/namespace-labels.yaml.j2",
+    security_policy_value: str
 ):
     """Validate that a namespace for a Profile exists and has the expected properties.
 
@@ -239,7 +254,7 @@ def validate_profile_namespace(
     with open(namespace_label_file, encoding="utf-8") as labels_file:
         labels = labels_file.read()
     template = jinja2.Template(labels)
-    rendered_string = template.render(security_policy=DEFAULT_SECURITY_POLICY)
+    rendered_string = template.render(security_policy=security_policy_value)
     namespace_labels = yaml.safe_load(rendered_string)
 
     # Check namespace exists and has labels
