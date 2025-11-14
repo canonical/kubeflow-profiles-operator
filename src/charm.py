@@ -296,6 +296,7 @@ class KubeflowProfilesOperator(CharmBase):
 
         current_layer = self.profiles_container.get_plan()
         current_security_policy = self.state.last_security_policy
+        self.log.warning(current_security_policy)
 
         if (
             current_layer.services != self._profiles_pebble_layer.services
@@ -303,7 +304,6 @@ class KubeflowProfilesOperator(CharmBase):
         ):
             self._push_namespace_labels()
             self.state.last_security_policy = self._security_policy
-            self._current_namespace_labels = self._render_namespace_labels_template
             self.profiles_container.add_layer(
                 self._profiles_container_name, self._profiles_pebble_layer, combine=True
             )

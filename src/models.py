@@ -12,7 +12,7 @@ class CharmConfig(BaseModel):
 
     port: int = Field(ge=1024, lt=65535)
     manager_port: int = Field(ge=1024, lt=65535)
-    security_policy: Literal["baseline", "privileged"]
+    security_policy: Literal["privileged", "baseline", "restricted"]
 
 
 def validate_config(config: Dict[str, Any]):
