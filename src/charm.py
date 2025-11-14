@@ -381,9 +381,7 @@ class KubeflowProfilesOperator(CharmBase):
                 )
 
     def _render_namespace_labels_template(self) -> dict[str, str]:
-        """
-        Return a rendered dict of using the charm's config options as the context.
-        """
+        """Return a rendered dict of using the charm's config options as the context."""
         with open(NAMESPACE_LABELS_FILE, encoding="utf-8") as labels_file:
             labels = labels_file.read()
         template = jinja2.Template(labels)

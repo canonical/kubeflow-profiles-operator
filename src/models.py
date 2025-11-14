@@ -1,3 +1,5 @@
+"""Module to validate the charm configuration using pydantic."""
+
 from typing import Any, Dict, Literal
 
 import ops
@@ -15,7 +17,7 @@ class CharmConfig(BaseModel):
 
 def validate_config(config: Dict[str, Any]):
     """
-    Validates all config options using the above model.
+    Validate all config options using the above model.
 
     Args:
         config: A dictionary of config values
