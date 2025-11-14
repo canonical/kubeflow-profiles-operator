@@ -1,10 +1,8 @@
 """Module to validate the charm configuration using pydantic."""
 
-from typing import Any, Dict, Literal
+from typing import Literal
 
-import ops
-from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 
 class CharmConfig(BaseModel):
@@ -13,20 +11,3 @@ class CharmConfig(BaseModel):
     port: int = Field(ge=1024, lt=65535)
     manager_port: int = Field(ge=1024, lt=65535)
     security_policy: Literal["privileged", "baseline", "restricted"]
-
-
-def validate_config(config: Dict[str, Any]):
-    """
-    Validate all config options using the above model.
-
-    Args:
-        config: A dictionary of config values
-
-    Raises:
-        ErrorWithStatus: If the validation fails
-    """
-    try:
-        CharmConfig(**config)
-    except ValidationError as e:
-        error_msg = f"Invalid config: {e}"
-        raise ErrorWithStatus(error_msg, ops.BlockedStatus)

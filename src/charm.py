@@ -26,6 +26,7 @@ from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
 from ops.model import ActiveStatus, BlockedStatus, Container, MaintenanceStatus, WaitingStatus
 from ops.pebble import ChangeError, Layer
+from pydantic import ValidationError
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
 from constants import (
@@ -33,7 +34,7 @@ from constants import (
     K8S_USER_WORKLOAD_EXCLUDE_RESOURCECS,
     NAMESPACE_LABELS_FILE,
 )
-from models import validate_config
+from models import CharmConfig
 
 
 class KubeflowProfilesOperator(CharmBase):
@@ -56,15 +57,16 @@ class KubeflowProfilesOperator(CharmBase):
                 "manager_port": self.model.config["manager-port"],
                 "security_policy": self.model.config["security-policy"],
             }
-            validate_config(config_data)
-        except ErrorWithStatus as e:
-            self.log.error(e.msg)
-            self.unit.status = e.status
+            config = CharmConfig(**config_data)
+        except ValidationError as e:
+            error_msg = f"Invalid config: {e}"
+            self.log.error(error_msg)
+            self.unit.status = BlockedStatus(error_msg)
             return
 
-        self._manager_port = self.model.config["manager-port"]
-        self._kfam_port = self.model.config["port"]
-        self._security_policy = self.model.config["security-policy"]
+        self._manager_port = config.manager_port
+        self._kfam_port = config.port
+        self._security_policy = config.security_policy
         manager_port = ServicePort(int(self._manager_port), name="manager")
         kfam_port = ServicePort(int(self._kfam_port), name="http")
         self.service_patcher = KubernetesServicePatch(
