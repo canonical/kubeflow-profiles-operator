@@ -95,7 +95,7 @@ async def test_metrics_enpoint(ops_test):
 async def test_profile_creation(lightkube_client, profile):
     """Test whether a namespace was created for this profile."""
     profile_name = profile
-    validate_profile_namespace(lightkube_client, profile_name, DEFAULT_SECURITY_POLICY)
+    validate_profile_namespace(lightkube_client, DEFAULT_SECURITY_POLICY profile_name)
 
 
 async def test_config_option_propagation(lightkube_client, profile):
@@ -108,7 +108,7 @@ async def test_config_option_propagation(lightkube_client, profile):
     )
 
     profile_name = profile
-    validate_profile_namespace(lightkube_client, profile_name, NEW_SECURITY_POLICY)
+    validate_profile_namespace(lightkube_client, NEW_SECURITY_POLICY, profile_name)
     
 
 
@@ -242,8 +242,8 @@ def delete_all_from_yaml(yaml_file: str, lightkube_client: lightkube.Client = No
 def validate_profile_namespace(
     client: lightkube.Client,
     profile_name: str,
-    namespace_label_file: str = "./src/templates/namespace-labels.yaml.j2",
     security_policy_value: str
+    namespace_label_file: str = "./src/templates/namespace-labels.yaml.j2",
 ):
     """Validate that a namespace for a Profile exists and has the expected properties.
 
