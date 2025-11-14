@@ -14,6 +14,6 @@ options:
     type: string
     default: "privileged"
     description: >
-      Specify the security policy to enforce in user workloads. The allowed values are `privileged`, `baseline`, and `restricted`.
+      Specify the security policy to enforce in user workloads. The only two allowed values are `privileged` and `baseline`.
 
       This option changes the label that is added to all workloads in the profile's namespace. For more information, refer to: https://kubernetes.io/docs/concepts/security/pod-security-standards/
