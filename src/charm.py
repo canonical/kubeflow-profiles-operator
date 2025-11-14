@@ -52,14 +52,14 @@ class KubeflowProfilesOperator(CharmBase):
             config_data = {
                 "port": self.model.config["port"],
                 "manager_port": self.model.config["manager-port"],
-                "security_policy": self.model.config["security-policy"]
+                "security_policy": self.model.config["security-policy"],
             }
             validate_config(config_data)
         except ErrorWithStatus as e:
             self.log.error(e.msg)
             self.unit.status = e.status
             return
-        
+
         self._manager_port = self.model.config["manager-port"]
         self._kfam_port = self.model.config["port"]
         self._security_policy = self.model.config["security-policy"]

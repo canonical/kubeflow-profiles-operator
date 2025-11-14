@@ -237,7 +237,7 @@ def validate_profile_namespace(
     """
     # Get required labels
     with open(namespace_label_file, encoding="utf-8") as labels_file:
-            labels = labels_file.read()
+        labels = labels_file.read()
     template = jinja2.Template(labels)
     rendered_string = template.render(security_policy=DEFAULT_SECURITY_POLICY)
     namespace_labels = yaml.safe_load(rendered_string)
