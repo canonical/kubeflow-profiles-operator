@@ -98,18 +98,19 @@ async def test_profile_creation(lightkube_client, profile):
     validate_profile_namespace(lightkube_client, DEFAULT_SECURITY_POLICY, profile_name)
 
 
-async def test_config_option_propagation(lightkube_client, profile):
+async def test_config_option_propagation(ops_test, lightkube_client, profile):
     """Test that changes to the security policy are properly propagated."""
-    NEW_SECURITY_POLICY = "baseline"
-    await ops_test.model.applications[CHARM_NAME].set_config({"security-policy": NEW_SECURITY_POLICY})
+    new_security_policy = "baseline"
+    await ops_test.model.applications[CHARM_NAME].set_config(
+        {"security-policy": new_security_policy}
+    )
 
     await ops_test.model.wait_for_idle(
         apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
     )
 
     profile_name = profile
-    validate_profile_namespace(lightkube_client, NEW_SECURITY_POLICY, profile_name)
-    
+    validate_profile_namespace(lightkube_client, new_security_policy, profile_name)
 
 
 async def test_health_check_profiles(ops_test):
