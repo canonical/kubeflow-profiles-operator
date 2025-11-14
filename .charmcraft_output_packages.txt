@@ -1,1 +1,0 @@
-kubeflow-profiles_ubuntu@24.04-amd64.charm
