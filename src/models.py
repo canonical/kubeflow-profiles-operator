@@ -28,4 +28,3 @@ def validate_config(config: Dict[str, Any]):
     except ValidationError as e:
         error_msg = f"Invalid config: {e}"
         raise ErrorWithStatus(error_msg, ops.BlockedStatus)
-        return (False, error_msg)
