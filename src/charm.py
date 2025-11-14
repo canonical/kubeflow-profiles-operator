@@ -296,7 +296,6 @@ class KubeflowProfilesOperator(CharmBase):
 
         current_layer = self.profiles_container.get_plan()
         current_security_policy = self.state.last_security_policy
-        self.log.warning(current_security_policy)
 
         if (
             current_layer.services != self._profiles_pebble_layer.services
