@@ -95,7 +95,7 @@ async def test_metrics_enpoint(ops_test):
 async def test_profile_creation(lightkube_client, profile):
     """Test whether a namespace was created for this profile."""
     profile_name = profile
-    validate_profile_namespace(lightkube_client, DEFAULT_SECURITY_POLICY profile_name)
+    validate_profile_namespace(lightkube_client, DEFAULT_SECURITY_POLICY, profile_name)
 
 
 async def test_config_option_propagation(lightkube_client, profile):
