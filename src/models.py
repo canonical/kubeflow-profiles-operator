@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field, ValidationError
 class CharmConfig(BaseModel):
     """A model for validating the charm's configuration."""
 
-    port: int = Field(gt=1024, lt=65535)
-    manager_port: int = Field(gt=1024, lt=65535)
+    port: int = Field(ge=1024, lt=65535)
+    manager_port: int = Field(ge=1024, lt=65535)
     security_policy: Literal["baseline", "privileged"]
 
 
