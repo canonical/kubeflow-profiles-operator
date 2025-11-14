@@ -295,6 +295,7 @@ class KubeflowProfilesOperator(CharmBase):
 
         current_layer = self.profiles_container.get_plan()
 
+        self._push_namespace_labels()
         if current_layer.services != self._profiles_pebble_layer.services:
             self.profiles_container.add_layer(
                 self._profiles_container_name, self._profiles_pebble_layer, combine=True
@@ -304,7 +305,6 @@ class KubeflowProfilesOperator(CharmBase):
                 self.profiles_container.replan()
             except ChangeError as e:
                 raise GenericCharmRuntimeError("Failed to replan") from e
-        self._push_namespace_labels()
 
     def _on_profiles_pebble_ready(self, event):
         """Update the started Profiles container."""
