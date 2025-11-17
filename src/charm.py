@@ -21,6 +21,7 @@ from lightkube import ApiError, codecs
 from lightkube.generic_resource import create_global_resource, load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
 from lightkube.resources.core_v1 import Namespace
+from lightkube.types import PatchType
 from ops import main
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
@@ -331,32 +332,22 @@ class KubeflowProfilesOperator(CharmBase):
 
     def _update_profile_namespace_labels(self):
         """Update labels for all existing profile namespaces."""
-        try:
-            client = self.k8s_resource_handler.lightkube_client
-            profiles = client.list(ProfileLightkube)
+        client = self.k8s_resource_handler.lightkube_client
+        profile_namespaces = self._get_profile_namespaces()
 
-            patch_data = {
-                "metadata": {
-                    "labels": {"pod-security.kubernetes.io/enforce": self._security_policy}
-                }
-            }
+        patch_data = {
+            "metadata": {"labels": {"pod-security.kubernetes.io/enforce": self._security_policy}}
+        }
 
-            # Iterate through all profiles
-            for profile in profiles:
-                profile_name = profile.metadata.name
-                try:
-                    self.log.debug(f"Patching Profile: '{profile_name}' ...")
-                    client.patch(
-                        res=ProfileLightkube,
-                        name=profile_name,
-                        obj=patch_data,
-                    )
-                except ApiError as e:
-                    self.log.warning(f"Failed to patch Profile '{profile_name}': {e}")
-                    raise e
-        except ApiError as e:
-            self.log.error(f"Failed to list Profiles: {e}")
-            raise e
+        for namespace_name in profile_namespaces:
+            try:
+                self.log.debug(f"Patching namespace: '{namespace_name}' ...")
+                client.patch(
+                    res=Namespace, name=namespace_name, obj=patch_data, patch_type=PatchType.MERGE
+                )
+            except ApiError as e:
+                self.log.warning(f"Failed to patch namespace '{namespace_name}': {e}")
+                raise e
 
     def _push_namespace_labels_to_container(self):
         """Push namespace labels to Profile container."""
