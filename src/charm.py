@@ -304,7 +304,7 @@ class KubeflowProfilesOperator(CharmBase):
             current_layer.services != self._profiles_pebble_layer.services
             or current_security_policy != self._security_policy
         ):
-            self._update_profile_namespace_labels()
+            self._update_profile_namespace_security_policy_labels()
             self._push_namespace_labels_to_container()
             self.state.last_security_policy = self._security_policy
             self.profiles_container.add_layer(
@@ -326,8 +326,8 @@ class KubeflowProfilesOperator(CharmBase):
             return
         self._on_event(event)
 
-    def _update_profile_namespace_labels(self):
-        """Update labels for all existing profile namespaces."""
+    def _update_profile_namespace_security_policy_labels(self):
+        """Update security policy label for all existing profile namespaces."""
         client = self.k8s_resource_handler.lightkube_client
         profile_namespaces = self._get_profile_namespaces()
 
