@@ -18,7 +18,7 @@ from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServ
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.velero_libs.v0.velero_backup_config import VeleroBackupProvider, VeleroBackupSpec
 from lightkube import ApiError, codecs
-from lightkube.generic_resource import load_in_cluster_generic_resources
+from lightkube.generic_resource import create_global_resource, load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
 from lightkube.resources.core_v1 import Namespace
 from ops import main
@@ -35,6 +35,10 @@ from constants import (
     NAMESPACE_LABELS_FILE,
 )
 from models import CharmConfig
+
+ProfileLightkube = create_global_resource(
+    group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
+)
 
 
 class KubeflowProfilesOperator(CharmBase):
@@ -303,7 +307,8 @@ class KubeflowProfilesOperator(CharmBase):
             current_layer.services != self._profiles_pebble_layer.services
             or current_security_policy != self._security_policy
         ):
-            self._push_namespace_labels()
+            self._update_profile_namespace_labels()
+            self._push_namespace_labels_to_container()
             self.state.last_security_policy = self._security_policy
             self.profiles_container.add_layer(
                 self._profiles_container_name, self._profiles_pebble_layer, combine=True
@@ -324,7 +329,36 @@ class KubeflowProfilesOperator(CharmBase):
             return
         self._on_event(event)
 
-    def _push_namespace_labels(self):
+    def _update_profile_namespace_labels(self):
+        """Update labels for all existing profile namespaces."""
+        try:
+            client = self.k8s_resource_handler.lightkube_client
+            profiles = client.list(ProfileLightkube)
+
+            patch_data = {
+                "metadata": {
+                    "labels": {"pod-security.kubernetes.io/enforce": self._security_policy}
+                }
+            }
+
+            # Iterate through all profiles
+            for profile in profiles:
+                profile_name = profile.metadata.name
+                try:
+                    self.log.debug(f"Patching Profile: '{profile_name}' ...")
+                    client.patch(
+                        res=ProfileLightkube,
+                        name=profile_name,
+                        obj=patch_data,
+                    )
+                except ApiError as e:
+                    self.log.warning(f"Failed to patch Profile '{profile_name}': {e}")
+                    raise e
+        except ApiError as e:
+            self.log.error(f"Failed to list Profiles: {e}")
+            raise e
+
+    def _push_namespace_labels_to_container(self):
         """Push namespace labels to Profile container."""
         labels = self._render_namespace_labels_template()
         self.profiles_container.push(
