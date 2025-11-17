@@ -18,7 +18,7 @@ from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServ
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.velero_libs.v0.velero_backup_config import VeleroBackupProvider, VeleroBackupSpec
 from lightkube import ApiError, codecs
-from lightkube.generic_resource import create_global_resource, load_in_cluster_generic_resources
+from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
 from lightkube.resources.core_v1 import Namespace
 from lightkube.types import PatchType
@@ -36,10 +36,6 @@ from constants import (
     NAMESPACE_LABELS_FILE,
 )
 from models import CharmConfig
-
-ProfileLightkube = create_global_resource(
-    group="kubeflow.org", version="v1", kind="Profile", plural="profiles"
-)
 
 
 class KubeflowProfilesOperator(CharmBase):
