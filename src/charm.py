@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import List
 
+import jinja2
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
@@ -20,11 +21,13 @@ from lightkube import ApiError, codecs
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
 from lightkube.resources.core_v1 import Namespace
+from lightkube.types import PatchType
 from ops import main
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import StoredState
 from ops.model import ActiveStatus, BlockedStatus, Container, MaintenanceStatus, WaitingStatus
 from ops.pebble import ChangeError, Layer
+from pydantic import ValidationError
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
 from constants import (
@@ -32,12 +35,13 @@ from constants import (
     K8S_USER_WORKLOAD_EXCLUDE_RESOURCECS,
     NAMESPACE_LABELS_FILE,
 )
+from models import CharmConfig
 
 
 class KubeflowProfilesOperator(CharmBase):
     """A Juju Charm for Kubeflow Profiles Operator."""
 
-    _stored = StoredState()
+    state = StoredState()
 
     def __init__(self, *args):
         """Initialize charm and setup the container."""
@@ -45,9 +49,25 @@ class KubeflowProfilesOperator(CharmBase):
 
         self.log = logging.getLogger(__name__)
 
-        self._manager_port = self.model.config["manager-port"]
-        self._kfam_port = self.model.config["port"]
+        self.state.set_default(last_security_policy="")
 
+        # Validate all config options
+        try:
+            config_data = {
+                "port": self.model.config["port"],
+                "manager_port": self.model.config["manager-port"],
+                "security_policy": self.model.config["security-policy"],
+            }
+            config = CharmConfig(**config_data)
+        except ValidationError as e:
+            error_msg = f"Invalid config: {e}"
+            self.log.error(error_msg)
+            self.unit.status = BlockedStatus(error_msg)
+            return
+
+        self._manager_port = config.manager_port
+        self._kfam_port = config.port
+        self._security_policy = config.security_policy
         manager_port = ServicePort(int(self._manager_port), name="manager")
         kfam_port = ServicePort(int(self._kfam_port), name="http")
         self.service_patcher = KubernetesServicePatch(
@@ -278,9 +298,15 @@ class KubeflowProfilesOperator(CharmBase):
             raise ErrorWithStatus("Waiting for pod startup to complete", MaintenanceStatus)
 
         current_layer = self.profiles_container.get_plan()
+        current_security_policy = self.state.last_security_policy
 
-        if current_layer.services != self._profiles_pebble_layer.services:
-            self._push_namespace_labels()
+        if (
+            current_layer.services != self._profiles_pebble_layer.services
+            or current_security_policy != self._security_policy
+        ):
+            self._update_profile_namespace_security_policy_labels()
+            self._push_namespace_labels_to_container()
+            self.state.last_security_policy = self._security_policy
             self.profiles_container.add_layer(
                 self._profiles_container_name, self._profiles_pebble_layer, combine=True
             )
@@ -300,10 +326,28 @@ class KubeflowProfilesOperator(CharmBase):
             return
         self._on_event(event)
 
-    def _push_namespace_labels(self):
+    def _update_profile_namespace_security_policy_labels(self):
+        """Update security policy label for all existing profile namespaces."""
+        client = self.k8s_resource_handler.lightkube_client
+        profile_namespaces = self._get_profile_namespaces()
+
+        patch_data = {
+            "metadata": {"labels": {"pod-security.kubernetes.io/enforce": self._security_policy}}
+        }
+
+        for namespace_name in profile_namespaces:
+            try:
+                self.log.debug(f"Patching namespace: '{namespace_name}' ...")
+                client.patch(
+                    res=Namespace, name=namespace_name, obj=patch_data, patch_type=PatchType.MERGE
+                )
+            except ApiError as e:
+                self.log.warning(f"Failed to patch namespace '{namespace_name}': {e}")
+                raise e
+
+    def _push_namespace_labels_to_container(self):
         """Push namespace labels to Profile container."""
-        with open(NAMESPACE_LABELS_FILE, encoding="utf-8") as labels_file:
-            labels = labels_file.read()
+        labels = self._render_namespace_labels_template()
         self.profiles_container.push(
             "/etc/profile-controller/namespace-labels.yaml", labels, make_dirs=True
         )
@@ -364,6 +408,15 @@ class KubeflowProfilesOperator(CharmBase):
                 event.log(
                     f"Failed to apply manifest: {obj.metadata.name} to namespace: {namespace}. Error: {e}"  # noqa E501
                 )
+
+    def _render_namespace_labels_template(self) -> dict[str, str]:
+        """Return a rendered dict of using the charm's config options as the context."""
+        with open(NAMESPACE_LABELS_FILE, encoding="utf-8") as labels_file:
+            labels = labels_file.read()
+        template = jinja2.Template(labels)
+        security_value = self._security_policy
+        rendered = template.render(security_policy=security_value)
+        return rendered
 
     def _safe_load_file_to_text(self, filename: str):
         """Return the contents of filename if it is an existing file, else it returns filename."""
