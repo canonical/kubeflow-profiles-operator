@@ -1,4 +1,6 @@
 build/
+coverage.xml
+.coverage
 .tox/
 __pycache__
 .kube/

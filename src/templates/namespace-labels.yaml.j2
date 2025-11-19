@@ -18,3 +18,4 @@ serving.kubeflow.org/inferenceservice: "enabled"
 pipelines.kubeflow.org/enabled: "true"
 app.kubernetes.io/part-of: "kubeflow-profile"
 user.kubeflow.org/enabled: "true"
+pod-security.kubernetes.io/enforce: {{ security_policy }}
