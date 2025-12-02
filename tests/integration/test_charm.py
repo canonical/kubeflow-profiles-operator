@@ -4,6 +4,7 @@
 import logging
 from pathlib import Path
 
+import jinja2
 import lightkube
 import pytest
 import requests
@@ -30,6 +31,9 @@ ADMISSION_WEBHOOK_NAME = "admission-webhook"
 ISTIO_PILOT_NAME = "istio-pilot"
 ISTIO_PILOT_CHANNEL = "1.24/stable"
 ISTIO_PILOT_TRUST = True
+
+CONFIG_DATA = yaml.safe_load(Path("./config.yaml").read_text())
+DEFAULT_SECURITY_POLICY = CONFIG_DATA["options"]["security-policy"]["default"]
 
 
 @pytest.mark.abort_on_fail
@@ -94,7 +98,33 @@ async def test_metrics_enpoint(ops_test):
 async def test_profile_creation(lightkube_client, profile):
     """Test whether a namespace was created for this profile."""
     profile_name = profile
-    validate_profile_namespace(lightkube_client, profile_name)
+    validate_profile_namespace(lightkube_client, profile_name, DEFAULT_SECURITY_POLICY)
+
+
+async def test_config_option_propagation(ops_test, lightkube_client, profile):
+    """Test that changes to the security policy are properly propagated."""
+    new_security_policy = "baseline"
+    await ops_test.model.applications[CHARM_NAME].set_config(
+        {"security-policy": new_security_policy}
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
+    )
+
+    profile_name = profile
+    validate_profile_namespace(lightkube_client, profile_name, new_security_policy)
+
+    # Change back to the default value
+    await ops_test.model.applications[CHARM_NAME].set_config(
+        {"security-policy": DEFAULT_SECURITY_POLICY}
+    )
+    await ops_test.model.wait_for_idle(
+        apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
+    )
+
+    profile_name = profile
+    validate_profile_namespace(lightkube_client, profile_name, DEFAULT_SECURITY_POLICY)
 
 
 async def test_health_check_profiles(ops_test):
@@ -227,7 +257,8 @@ def delete_all_from_yaml(yaml_file: str, lightkube_client: lightkube.Client = No
 def validate_profile_namespace(
     client: lightkube.Client,
     profile_name: str,
-    namespace_label_file: str = "./src/templates/namespace-labels.yaml",
+    security_policy_value: str,
+    namespace_label_file: str = "./src/templates/namespace-labels.yaml.j2",
 ):
     """Validate that a namespace for a Profile exists and has the expected properties.
 
@@ -235,8 +266,11 @@ def validate_profile_namespace(
     namespace
     """
     # Get required labels
-    namespace_label_file = Path(namespace_label_file)
-    namespace_labels = yaml.safe_load(namespace_label_file.read_text())
+    with open(namespace_label_file, encoding="utf-8") as labels_file:
+        labels = labels_file.read()
+    template = jinja2.Template(labels)
+    rendered_string = template.render(security_policy=security_policy_value)
+    namespace_labels = yaml.safe_load(rendered_string)
 
     # Check namespace exists and has labels
     namespace = client.get(Namespace, profile_name)
