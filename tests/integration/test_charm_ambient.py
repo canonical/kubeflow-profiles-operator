@@ -17,6 +17,7 @@ from charmed_kubeflow_chisme.testing import (
     deploy_and_assert_grafana_agent,
     deploy_and_integrate_service_mesh_charms,
     get_alert_rules,
+    integrate_with_service_mesh,
 )
 from charms_dependencies import KUBEFLOW_DASHBOARD
 from lightkube import codecs
@@ -90,7 +91,14 @@ async def test_build_and_deploy(ops_test: OpsTest):
         trust=KUBEFLOW_DASHBOARD.trust,
     )
 
-    await ops_test.model.relate(KUBEFLOW_DASHBOARD.charm, CHARM_NAME)
+    await ops_test.model.integrate(
+        f"{KUBEFLOW_DASHBOARD.charm}:kubeflow-profiles", f"{CHARM_NAME}:kubeflow-profiles"
+    )
+
+    await integrate_with_service_mesh(
+        app=KUBEFLOW_DASHBOARD.charm,
+        model=ops_test.model,
+    )
 
     # Wait for everything to be active and idle
     await ops_test.model.wait_for_idle(
