@@ -288,7 +288,6 @@ def validate_profile_namespace(
         )
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("container_name", list(CONTAINERS_SECURITY_CONTEXT_MAP.keys()))
 async def test_container_security_context(
     ops_test: OpsTest,
