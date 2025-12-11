@@ -73,15 +73,15 @@ jobs:
         if: failure()
 
       - name: Get kubeflow-profiles workload logs
-        run: kubectl logs --tail 100 -ntesting -ljuju-app=kubeflow-profiles -c kubeflow-profiles
+        run: kubectl logs --tail 100 -nkubeflow -ljuju-app=kubeflow-profiles -c kubeflow-profiles
         if: failure()
 
       - name: Get kubeflow-kfam workload logs
-        run: kubectl logs --tail 100 -ntesting -ljuju-app=kubeflow-profiles -c kubeflow-kfam
+        run: kubectl logs --tail 100 -nkubeflow -ljuju-app=kubeflow-profiles -c kubeflow-kfam
         if: failure()
 
       - name: Get operator logs
-        run: kubectl logs --tail 100 -ntesting -ljuju-operator
+        run: kubectl logs --tail 100 -nkubeflow -ljuju-operator
         if: failure()
 
       - name: Save debug artifacts
