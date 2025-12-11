@@ -62,7 +62,7 @@ jobs:
           sudo concierge prepare --trace
       - name: Run test
         run: |
-          tox -e ${{ matrix.test-type }} -- --model testing
+          tox -e ${{ matrix.test-type }} -- --model kubeflow
 
       - name: Get all
         run: kubectl get all -A
