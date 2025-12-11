@@ -15,7 +15,9 @@ def harness():
     harness = Harness(KubeflowProfilesOperator)
     harness.set_can_connect("kubeflow-profiles", True)
     harness.set_can_connect("kubeflow-kfam", True)
-    return harness
+    harness.set_leader(True)
+    harness.add_storage("config-profiles", attach=True)
+    yield harness
 
 
 @pytest.fixture()
