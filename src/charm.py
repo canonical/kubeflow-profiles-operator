@@ -73,9 +73,10 @@ class KubeflowProfilesOperator(CharmBase):
         self.service_patcher = KubernetesServicePatch(
             self, [manager_port, kfam_port], service_name=f"{self.model.app.name}"
         )
-
+        self._profiles_config_storage_name = "config-profiles"
         self._profiles_container_name = "kubeflow-profiles"
         self._profiles_container = self.unit.get_container(self._profiles_container_name)
+        self._profiles_container_meta = self.meta.containers[self._profiles_container_name]
 
         self._kfam_container_name = "kubeflow-kfam"
         self._kfam_container = self.unit.get_container(self._kfam_container_name)
@@ -348,8 +349,11 @@ class KubeflowProfilesOperator(CharmBase):
     def _push_namespace_labels_to_container(self):
         """Push namespace labels to Profile container."""
         labels = self._render_namespace_labels_template()
+        config_storage_path = Path(
+            self._profiles_container_meta.mounts[self._profiles_config_storage_name].location
+        )
         self.profiles_container.push(
-            "/etc/profile-controller/namespace-labels.yaml", labels, make_dirs=True
+            config_storage_path / "namespace-labels.yaml", labels, make_dirs=True
         )
 
     def _on_kfam_pebble_ready(self, event):
@@ -388,6 +392,16 @@ class KubeflowProfilesOperator(CharmBase):
             # We can't do anything useful when not the leader, so do nothing.
             self.log.info("Not a leader, skipping setup")
             raise ErrorWithStatus("Waiting for leadership", WaitingStatus)
+
+    def _check_storage(self):
+        """Check if storage is available."""
+        config_storage_path = Path(
+            self._profiles_container_meta.mounts[self._profiles_config_storage_name].location
+        )
+
+        if not self.profiles_container.exists(config_storage_path):
+            self.log.info("Storage not yet available")
+            raise ErrorWithStatus("Waiting for storage", WaitingStatus)
 
     def _get_interfaces(self):
         """Retrieve interface object."""
@@ -430,6 +444,7 @@ class KubeflowProfilesOperator(CharmBase):
         """Perform all required actions for the Charm."""
         try:
             self._check_leader()
+            self._check_storage()
             interfaces = self._get_interfaces()
             self._send_info(interfaces)
             self._deploy_k8s_resources()
@@ -443,18 +458,6 @@ class KubeflowProfilesOperator(CharmBase):
             return
 
         self.model.unit.status = ActiveStatus()
-
-
-class CheckFailed(Exception):
-    """Raise this exception if one of the checks in main fails."""
-
-    def __init__(self, msg: str, status_type=None):
-        """Initialize CheckFailed exception."""
-        super().__init__()
-
-        self.msg = str(msg)
-        self.status_type = status_type
-        self.status = status_type(self.msg)
 
 
 if __name__ == "__main__":

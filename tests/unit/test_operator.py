@@ -5,10 +5,11 @@ from unittest.mock import ANY, patch
 
 import pytest
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+from ops.testing import Harness
 
 
 def test_log_forwarding(
-    harness,
+    harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
@@ -19,7 +20,7 @@ def test_log_forwarding(
 
 
 def test_metrics(
-    harness,
+    harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
@@ -34,7 +35,7 @@ def test_metrics(
 
 
 def test_not_leader(
-    harness,
+    harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
@@ -45,9 +46,24 @@ def test_not_leader(
     assert harness.charm.model.unit.status == WaitingStatus("Waiting for leadership")
 
 
+def test_storage_not_available(
+    harness: Harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
+):
+    """Test that the charm is properly blocking on invalid port."""
+    harness.set_leader(True)
+    harness.begin_with_initial_hooks()
+    assert isinstance(harness.charm.model.unit.status, WaitingStatus)
+    assert "Waiting for storage" in harness.charm.model.unit.status.message
+
+
 @pytest.mark.parametrize("invalid_port", [80, 100000])
 def test_invalid_port(
-    harness, mocked_kubernetes_service_patcher, mocked_resource_handler, invalid_port
+    harness: Harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
+    invalid_port,
 ):
     """Test that the charm is properly blocking on invalid port."""
     harness.set_leader(True)
@@ -59,7 +75,7 @@ def test_invalid_port(
 
 @pytest.mark.parametrize("invalid_port", [80, 100000])
 def test_invalid_manager_port(
-    harness, mocked_kubernetes_service_patcher, mocked_resource_handler, invalid_port
+    harness: Harness, mocked_kubernetes_service_patcher, mocked_resource_handler, invalid_port
 ):
     """Test that the charm is properly blocking on an invalid manager port."""
     harness.set_leader(True)
@@ -70,7 +86,7 @@ def test_invalid_manager_port(
 
 
 def test_invalid_security_policy(
-    harness,
+    harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
@@ -83,36 +99,39 @@ def test_invalid_security_policy(
 
 
 def test_profiles_container_running(
-    harness,
+    harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
     """Test that kubeflow-profiles container is running."""
     harness.set_leader(True)
+    harness.add_storage("config-profiles")
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-profiles")
     assert harness.charm.profiles_container.get_service("kubeflow-profiles").is_running()
 
 
 def test_kfam_container_running(
-    harness,
+    harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
     """Test that kubeflow-kfam container is running."""
     harness.set_leader(True)
+    harness.add_storage("config-profiles")
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-kfam")
     assert harness.charm.kfam_container.get_service("kubeflow-kfam").is_running()
 
 
 def test_no_relation(
-    harness,
+    harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
     """Test no relation scenario."""
     harness.set_leader(True)
+    harness.add_storage("config-profiles")
     harness.add_oci_resource(
         "profile-image", {"registrypath": "ci-test", "username": "", "password": ""}
     )
@@ -124,12 +143,13 @@ def test_no_relation(
 
 
 def test_profiles_pebble_ready_first_scenario(
-    harness,
+    harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
     """Test (install -> profiles pebble ready -> kfam pebble ready) reach Active.."""
     harness.set_leader(True)
+    harness.add_storage("config-profiles", attach=True)
     harness.begin()
     harness.charm.on.install.emit()
     harness.container_pebble_ready("kubeflow-profiles")
@@ -138,12 +158,13 @@ def test_profiles_pebble_ready_first_scenario(
 
 
 def test_kfam_pebble_ready_first_scenario(
-    harness,
+    harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
     """Test (install -> kfam pebble ready -> profiles pebble ready) reach Active."""
     harness.set_leader(True)
+    harness.add_storage("config-profiles", attach=True)
     harness.begin()
     harness.charm.on.install.emit()
     harness.container_pebble_ready("kubeflow-kfam")
@@ -152,12 +173,13 @@ def test_kfam_pebble_ready_first_scenario(
 
 
 def test_profiles_pebble_layer(
-    harness,
+    harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
     """Test creation of Profiles Pebble layer. Only testing specific items."""
     harness.set_leader(True)
+    harness.add_storage("config-profiles")
     harness.set_model_name("test_kubeflow")
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-profiles")
@@ -175,12 +197,13 @@ def test_profiles_pebble_layer(
 
 
 def test_kfam_pebble_layer(
-    harness,
+    harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
 ):
     """Test creation of kfam Pebble layer. Only testing specific items."""
     harness.set_leader(True)
+    harness.add_storage("config-profiles")
     harness.set_model_name("test_kubeflow")
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-kfam")
