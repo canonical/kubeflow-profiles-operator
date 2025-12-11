@@ -63,25 +63,25 @@ AUTH_POLICY_NAME = "ns-owner-access-istio"
 @pytest.mark.skip_if_deployed
 async def test_build_and_deploy(ops_test: OpsTest):
     """Build and deploy the charm and its dependencies."""
-    # my_charm = await ops_test.build_charm(".")
-    # kfam_image_path = METADATA["resources"]["kfam-image"]["upstream-source"]
-    # profile_image_path = METADATA["resources"]["profile-image"]["upstream-source"]
-    # resources = {"kfam-image": kfam_image_path, "profile-image": profile_image_path}
+    my_charm = await ops_test.build_charm(".")
+    kfam_image_path = METADATA["resources"]["kfam-image"]["upstream-source"]
+    profile_image_path = METADATA["resources"]["profile-image"]["upstream-source"]
+    resources = {"kfam-image": kfam_image_path, "profile-image": profile_image_path}
 
-    # await ops_test.model.deploy(my_charm, resources=resources, config=AMBIENT_CONFIG, trust=True)
+    await ops_test.model.deploy(my_charm, resources=resources, config=AMBIENT_CONFIG, trust=True)
 
-    # await ops_test.model.wait_for_idle(
-    #     apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
-    # )
+    await ops_test.model.wait_for_idle(
+        apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
+    )
 
-    # await deploy_and_integrate_service_mesh_charms(
-    #     app=CHARM_NAME, model=ops_test.model, relate_to_ingress=False
-    # )
+    await deploy_and_integrate_service_mesh_charms(
+        app=CHARM_NAME, model=ops_test.model, relate_to_ingress=False
+    )
 
-    # # Deploying grafana-agent-k8s and add all relations
-    # await deploy_and_assert_grafana_agent(
-    #     ops_test.model, CHARM_NAME, metrics=True, dashboard=False, logging=True
-    # )
+    # Deploying grafana-agent-k8s and add all relations
+    await deploy_and_assert_grafana_agent(
+        ops_test.model, CHARM_NAME, metrics=True, dashboard=False, logging=True
+    )
 
     # Deploy Kubeflow Dashboard and relate to the charm
     await ops_test.model.deploy(
