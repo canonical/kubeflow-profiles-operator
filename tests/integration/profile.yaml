@@ -4,7 +4,7 @@
 apiVersion: kubeflow.org/v1
 kind: Profile
 metadata:
-  name: profilename
+  name: noha
 spec:
   owner:
     kind: User

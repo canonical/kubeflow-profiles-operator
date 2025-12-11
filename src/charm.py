@@ -13,6 +13,7 @@ from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRunt
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
+from charms.istio_beacon_k8s.v0.service_mesh import AppPolicy, ServiceMeshConsumer, UnitPolicy
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
@@ -37,6 +38,10 @@ from constants import (
 )
 from models import CharmConfig
 
+# Service mesh principals
+NOTEBOOK_CONTROLLER_PRINCIPAL = "cluster.local/ns/kubeflow/sa/jupyter-controller"
+KFP_UI_PRINCIPAL = "cluster.local/ns/kubeflow/sa/kfp-ui"
+
 
 class KubeflowProfilesOperator(CharmBase):
     """A Juju Charm for Kubeflow Profiles Operator."""
@@ -57,6 +62,10 @@ class KubeflowProfilesOperator(CharmBase):
                 "port": self.model.config["port"],
                 "manager_port": self.model.config["manager-port"],
                 "security_policy": self.model.config["security-policy"],
+                "istio_gateway_principal": self.model.config["istio-gateway-principal"],
+                "notebook_controller_principal": NOTEBOOK_CONTROLLER_PRINCIPAL,
+                "kfp_ui_principal": KFP_UI_PRINCIPAL,
+                "service_mesh_mode": self.model.config["service-mesh-mode"],
             }
             config = CharmConfig(**config_data)
         except ValidationError as e:
@@ -85,14 +94,27 @@ class KubeflowProfilesOperator(CharmBase):
         self._k8s_resource_handler = None
         self._lightkube_field_manager = "lightkube"
 
-        # service account names are hardcoded
+        # service account names are imported from config
         # TODO: implement relation and get from relation data
-        # tracked in https://github.com/canonical/kubeflow-profiles-operator/issues/156
-        self._istio_gateway_principal = (
-            "cluster.local/ns/kubeflow/sa/istio-ingressgateway-workload-service-account"
-        )
-        self._notebook_controller_principal = "cluster.local/ns/kubeflow/sa/jupyter-controller"
-        self._kfp_ui_principal = "cluster.local/ns/kubeflow/sa/kfp-ui"
+        self._istio_gateway_principal = config.istio_gateway_principal
+        self._notebook_controller_principal = config.notebook_controller_principal
+        self._kfp_ui_principal = config.kfp_ui_principal
+        self._service_mesh_mode = config.service_mesh_mode
+        # Automatically determine create_waypoint based on service_mesh_mode
+        self._create_waypoint = config.service_mesh_mode == "istio-ambient"
+
+        if self.unit.is_leader():
+            self._mesh = ServiceMeshConsumer(
+                self,
+                policies=[
+                    AppPolicy(relation="kubeflow-profiles", endpoints=[]),
+                    UnitPolicy(
+                        relation="metrics-endpoint",
+                        ports=[self._manager_port, self._kfam_port],
+                        paths=["/metrics"],
+                    ),
+                ],
+            )
 
         # setup events to be handled by specific event handlers
         self.framework.observe(self.on.install, self._on_install)
@@ -199,7 +221,12 @@ class KubeflowProfilesOperator(CharmBase):
                         "override": "replace",
                         "summary": "entry point for kubeflow profiles",
                         "command": (
-                            "/manager " "-userid-header " "kubeflow-userid " "-userid-prefix " '""'
+                            "/manager "
+                            "-userid-header kubeflow-userid "
+                            "-userid-prefix "
+                            '""'
+                            f" -service-mesh-mode {self._service_mesh_mode} "
+                            f"-create-waypoint {str(self._create_waypoint).lower()}"
                         ),
                         "environment": self._profiles_service_environment,
                         "startup": "enabled",
@@ -443,18 +470,6 @@ class KubeflowProfilesOperator(CharmBase):
             return
 
         self.model.unit.status = ActiveStatus()
-
-
-class CheckFailed(Exception):
-    """Raise this exception if one of the checks in main fails."""
-
-    def __init__(self, msg: str, status_type=None):
-        """Initialize CheckFailed exception."""
-        super().__init__()
-
-        self.msg = str(msg)
-        self.status_type = status_type
-        self.status = status_type(self.msg)
 
 
 if __name__ == "__main__":

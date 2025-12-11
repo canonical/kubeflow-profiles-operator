@@ -45,6 +45,9 @@ jobs:
   deploy:
     name: Integration Test
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        test-type: [integration, integration-ambient]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -59,7 +62,7 @@ jobs:
           sudo concierge prepare --trace
       - name: Run test
         run: |
-          tox -e integration -- --model testing
+          tox -e ${{ matrix.test-type }} -- --model testing
 
       - name: Get all
         run: kubectl get all -A

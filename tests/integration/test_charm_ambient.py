@@ -1,4 +1,4 @@
-# Copyright 2023 Canonical Ltd.
+# Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 """Integration tests for Kueflow Profiles Operator."""
 import logging
@@ -13,12 +13,14 @@ from charmed_kubeflow_chisme.testing import (
     assert_alert_rules,
     assert_logging,
     assert_metrics_endpoint,
+    assert_path_reachable_through_ingress,
     deploy_and_assert_grafana_agent,
+    deploy_and_integrate_service_mesh_charms,
     get_alert_rules,
 )
-from charms_dependencies import ISTIO_PILOT
+from charms_dependencies import KUBEFLOW_DASHBOARD
 from lightkube import codecs
-from lightkube.generic_resource import create_global_resource
+from lightkube.generic_resource import create_global_resource, create_namespaced_resource
 from lightkube.resources.core_v1 import Namespace
 from lightkube.types import PatchType
 from pytest_operator.plugin import OpsTest
@@ -32,33 +34,70 @@ CHARM_NAME = METADATA["name"]
 CONFIG_DATA = yaml.safe_load(Path("./config.yaml").read_text())
 DEFAULT_SECURITY_POLICY = CONFIG_DATA["options"]["security-policy"]["default"]
 
+ISTIO_GATEWAY_PRINCIPAL = "cluster.local/ns/kubeflow/sa/istio-ingress-k8s-istio"
+JUPYTER_CONTROLLER_PRINCIPAL = "cluster.local/ns/kubeflow/sa/jupyter-controller"
+KFP_UI_PRINCIPAL = "cluster.local/ns/kubeflow/sa/kfp-ui"
+AMBIENT_CONFIG = {
+    "service-mesh-mode": "istio-ambient",
+    "istio-gateway-principal": ISTIO_GATEWAY_PRINCIPAL,
+}
+
+AUTHORIZATION_POLICY = create_namespaced_resource(
+    group="security.istio.io",
+    version="v1",
+    kind="AuthorizationPolicy",
+    plural="authorizationpolicies",
+)
+
+GATEWAY = create_namespaced_resource(
+    group="gateway.networking.k8s.io",
+    version="v1",
+    kind="Gateway",
+    plural="gateways",
+)
+
+AUTH_POLICY_NAME = "ns-owner-access-istio"
+
 
 @pytest.mark.abort_on_fail
 @pytest.mark.skip_if_deployed
-async def test_build_and_deploy(ops_test):
-    """Build the charm-under-test and deploy it."""
+async def test_build_and_deploy(ops_test: OpsTest):
+    """Build and deploy the charm and its dependencies."""
     my_charm = await ops_test.build_charm(".")
     kfam_image_path = METADATA["resources"]["kfam-image"]["upstream-source"]
     profile_image_path = METADATA["resources"]["profile-image"]["upstream-source"]
     resources = {"kfam-image": kfam_image_path, "profile-image": profile_image_path}
 
-    await ops_test.model.deploy(my_charm, resources=resources, trust=True)
+    await ops_test.model.deploy(my_charm, resources=resources, config=AMBIENT_CONFIG, trust=True)
 
     await ops_test.model.wait_for_idle(
         apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
     )
 
-    # The profile controller needs AuthorizationPolicies to create Profiles
-    # Let's just deploy istio-pilot to provide the k8s cluster with this CRD
-    await ops_test.model.deploy(
-        entity_url=ISTIO_PILOT.charm,
-        channel=ISTIO_PILOT.channel,
-        trust=ISTIO_PILOT.trust,
+    await deploy_and_integrate_service_mesh_charms(
+        app=CHARM_NAME, model=ops_test.model, relate_to_ingress=False
     )
 
     # Deploying grafana-agent-k8s and add all relations
     await deploy_and_assert_grafana_agent(
         ops_test.model, CHARM_NAME, metrics=True, dashboard=False, logging=True
+    )
+
+    # Deploy Kubeflow Dashboard and relate to the charm
+    ops_test.model.deploy(
+        KUBEFLOW_DASHBOARD.charm,
+        channel=KUBEFLOW_DASHBOARD.channel,
+        trust=KUBEFLOW_DASHBOARD.trust,
+    )
+
+    await ops_test.model.relate(KUBEFLOW_DASHBOARD.charm, CHARM_NAME)
+
+    # Wait for everything to be active and idle
+    await ops_test.model.wait_for_idle(
+        [KUBEFLOW_DASHBOARD.charm, CHARM_NAME],
+        status="active",
+        raise_on_error=True,
+        timeout=600,
     )
 
 
@@ -122,6 +161,66 @@ async def test_config_option_propagation(ops_test, lightkube_client, profile):
 
     profile_name = profile
     validate_profile_namespace(lightkube_client, profile_name, DEFAULT_SECURITY_POLICY)
+
+
+@retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_delay(60), reraise=True)
+async def test_waypoint_gateway_created_for_profile(
+    ops_test: OpsTest, lightkube_client: lightkube.Client, profile
+):
+    """Test whether the waypoint gateway is created in the profile namespace."""
+    gateway_objects = list(lightkube_client.list(res=GATEWAY, namespace=profile))
+    assert (
+        len(gateway_objects) == 1
+    ), f"Expected 1 Gateway object in namespace '{profile}', found {len(gateway_objects)}"
+
+
+async def test_authorization_policy_has_correct_principals(
+    ops_test: OpsTest, lightkube_client: lightkube.Client, profile
+):
+    """Test whether the authorization policy contains the three configured principals."""
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_delay(60), reraise=True
+    )
+    def get_auth_policy():
+        return lightkube_client.get(
+            res=AUTHORIZATION_POLICY, name=AUTH_POLICY_NAME, namespace=profile
+        )
+
+    ns_owner_auth_policy = get_auth_policy()
+
+    # Convert the policy to a string to search for principals
+    policy_str = str(ns_owner_auth_policy.to_dict())
+
+    # Check that all three principals are mentioned in the policy
+    assert (
+        ISTIO_GATEWAY_PRINCIPAL in policy_str
+    ), f"Expected principal {ISTIO_GATEWAY_PRINCIPAL} not found in authorization policy"
+    assert (
+        JUPYTER_CONTROLLER_PRINCIPAL in policy_str
+    ), f"Expected principal {JUPYTER_CONTROLLER_PRINCIPAL} not found in authorization policy"
+    assert (
+        KFP_UI_PRINCIPAL in policy_str
+    ), f"Expected principal {KFP_UI_PRINCIPAL} not found in authorization policy"
+
+
+async def test_dashboard_to_kfam_communication(ops_test: OpsTest):
+    """
+    Test dashboard -> Central Dashboard -> KFAM communication via the ambient mesh.
+
+    The frontend (browser) that shows the profiles dropdown sends a request to the
+    Central Dashboard API (`/api/workgroup/exists`) to obtain profile
+    information. The Central Dashboard will in turn make a request to KFAM to resolve
+    or validate the requested workgroup information. This test exercises that
+    end-to-end path through the ambient service mesh so we verify the Central Dashboard
+    can reach KFAM and return information to the frontend.
+    """
+    await assert_path_reachable_through_ingress(
+        http_path="/api/workgroup/exists",
+        namespace=ops_test.model.name,
+        headers={"kubeflow-userid": "test"},
+        expected_status=200,
+    )
 
 
 async def test_health_check_profiles(ops_test):
