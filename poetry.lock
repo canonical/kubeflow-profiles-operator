@@ -532,14 +532,14 @@ pycparser = {version = "*", markers = "implementation_name != \"PyPy\""}
 
 [[package]]
 name = "charmed-kubeflow-chisme"
-version = "0.4.18"
+version = "0.4.19"
 description = "A collection of helpers for Charms maintained by the Charmed Kubeflow team"
 optional = false
 python-versions = ">=3.6"
 groups = ["charm", "integration"]
 files = [
-    {file = "charmed_kubeflow_chisme-0.4.18-py3-none-any.whl", hash = "sha256:e20a51094cab2804269fbc4faaab48c8248227d4d076c6cd088353fb748cf1d0"},
-    {file = "charmed_kubeflow_chisme-0.4.18.tar.gz", hash = "sha256:7e7cb36702b897914ab66e8dc50e1011262eb77d8a5a0d3cf1efd12a6acf46a1"},
+    {file = "charmed_kubeflow_chisme-0.4.19-py3-none-any.whl", hash = "sha256:e48afb9898d6d23e5bd188b9be7b8f720574499112bfe655c73477d451d10628"},
+    {file = "charmed_kubeflow_chisme-0.4.19.tar.gz", hash = "sha256:1074e03ceda785e4ee1f362085a289cb413ccde73897cb19fd6ec41b09fba3e2"},
 ]
 
 [package.dependencies]
@@ -1942,14 +1942,14 @@ signedtoken = ["cryptography (>=3.0.0)", "pyjwt (>=2.0.0,<3)"]
 
 [[package]]
 name = "opentelemetry-api"
-version = "1.39.0"
+version = "1.39.1"
 description = "OpenTelemetry Python API"
 optional = false
 python-versions = ">=3.9"
 groups = ["charm", "integration", "unit"]
 files = [
-    {file = "opentelemetry_api-1.39.0-py3-none-any.whl", hash = "sha256:3c3b3ca5c5687b1b5b37e5c5027ff68eacea8675241b29f13110a8ffbb8f0459"},
-    {file = "opentelemetry_api-1.39.0.tar.gz", hash = "sha256:6130644268c5ac6bdffaf660ce878f10906b3e789f7e2daa5e169b047a2933b9"},
+    {file = "opentelemetry_api-1.39.1-py3-none-any.whl", hash = "sha256:2edd8463432a7f8443edce90972169b195e7d6a05500cd29e6d13898187c9950"},
+    {file = "opentelemetry_api-1.39.1.tar.gz", hash = "sha256:fbde8c80e1b937a2c61f20347e91c0c18a1940cecf012d62e65a7caf08967c9c"},
 ]
 
 [package.dependencies]
@@ -3288,14 +3288,14 @@ typing-extensions = ">=4.12.0"
 
 [[package]]
 name = "urllib3"
-version = "2.6.1"
+version = "2.6.2"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.9"
 groups = ["charm", "integration"]
 files = [
-    {file = "urllib3-2.6.1-py3-none-any.whl", hash = "sha256:e67d06fe947c36a7ca39f4994b08d73922d40e6cca949907be05efa6fd75110b"},
-    {file = "urllib3-2.6.1.tar.gz", hash = "sha256:5379eb6e1aba4088bae84f8242960017ec8d8e3decf30480b3a1abdaa9671a3f"},
+    {file = "urllib3-2.6.2-py3-none-any.whl", hash = "sha256:ec21cddfe7724fc7cb4ba4bea7aa8e2ef36f607a4bab81aa6ce42a13dc3f03dd"},
+    {file = "urllib3-2.6.2.tar.gz", hash = "sha256:016f9c98bb7e98085cb2b4b17b87d2c702975664e4f060c6532e64d1c1a5e797"},
 ]
 
 [package.extras]
@@ -3580,4 +3580,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "5fbc1ea1b972f25247ed2e65548f8bec2ac9cf8317cc91740d677ea7ede3e92d"
+content-hash = "c02d8e148f07ba2745073d8d076ee6c5c5149b1e15ebd79949f34098c4445d38"
