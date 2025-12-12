@@ -63,6 +63,10 @@ jobs:
       - name: Run test
         run: |
           tox -e ${{ matrix.test-type }} -- --model kubeflow
+      
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: failure() || cancelled()
 
       - name: Get all
         run: kubectl get all -A
