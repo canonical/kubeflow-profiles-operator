@@ -410,14 +410,14 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "cachetools"
-version = "6.2.3"
+version = "6.2.2"
 description = "Extensible memoizing collections and decorators"
 optional = false
 python-versions = ">=3.9"
 groups = ["charm", "integration"]
 files = [
-    {file = "cachetools-6.2.3-py3-none-any.whl", hash = "sha256:3fde34f7033979efb1e79b07ae529c2c40808bdd23b0b731405a48439254fba5"},
-    {file = "cachetools-6.2.3.tar.gz", hash = "sha256:64e0a4ddf275041dd01f5b873efa87c91ea49022b844b8c5d1ad3407c0f42f1f"},
+    {file = "cachetools-6.2.2-py3-none-any.whl", hash = "sha256:6c09c98183bf58560c97b2abfcedcbaf6a896a490f534b031b661d3723b45ace"},
+    {file = "cachetools-6.2.2.tar.gz", hash = "sha256:8e6d266b25e539df852251cfd6f990b4bc3a141db73b939058d809ebd2590fc6"},
 ]
 
 [[package]]
@@ -532,14 +532,14 @@ pycparser = {version = "*", markers = "implementation_name != \"PyPy\""}
 
 [[package]]
 name = "charmed-kubeflow-chisme"
-version = "0.4.16"
+version = "0.4.19"
 description = "A collection of helpers for Charms maintained by the Charmed Kubeflow team"
 optional = false
 python-versions = ">=3.6"
 groups = ["charm", "integration"]
 files = [
-    {file = "charmed_kubeflow_chisme-0.4.16-py3-none-any.whl", hash = "sha256:001718389bcc31eefbd406a07decaa33933091ab57d841db201aeabd72032d50"},
-    {file = "charmed_kubeflow_chisme-0.4.16.tar.gz", hash = "sha256:1ff420524cc4bc87bcfc40227dbdffb484cb44879149d5063c193630f568009d"},
+    {file = "charmed_kubeflow_chisme-0.4.19-py3-none-any.whl", hash = "sha256:e48afb9898d6d23e5bd188b9be7b8f720574499112bfe655c73477d451d10628"},
+    {file = "charmed_kubeflow_chisme-0.4.19.tar.gz", hash = "sha256:1074e03ceda785e4ee1f362085a289cb413ccde73897cb19fd6ec41b09fba3e2"},
 ]
 
 [package.dependencies]
@@ -3580,4 +3580,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "4941550089bc578a8e1cac63b37c612276a470782fcf36d46497850ae9731220"
+content-hash = "c02d8e148f07ba2745073d8d076ee6c5c5149b1e15ebd79949f34098c4445d38"
