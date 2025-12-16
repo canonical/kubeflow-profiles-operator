@@ -10,8 +10,15 @@ docs: https://discourse.charmhub.io/t/charmed-kubeflow-profiles/8232
 containers:
   kubeflow-profiles:
     resource: profile-image
+    uid: 584792
+    gid: 584792
+    mounts:
+      - storage: config-profiles
+        location: /etc/profile-controller
   kubeflow-kfam:
     resource: kfam-image
+    uid: 584792
+    gid: 584792
 resources:
   profile-image:
     type: oci-image
@@ -46,3 +53,8 @@ requires:
   logging:
     interface: loki_push_api
     optional: true
+storage:
+  config-profiles:
+    type: filesystem
+    minimum-size: 1M
+charm-user: non-root
