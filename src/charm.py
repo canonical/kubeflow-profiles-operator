@@ -73,13 +73,18 @@ class KubeflowProfilesOperator(CharmBase):
         self.service_patcher = KubernetesServicePatch(
             self, [manager_port, kfam_port], service_name=f"{self.model.app.name}"
         )
-        self._profiles_config_storage_name = "config-profiles"
         self._profiles_container_name = "kubeflow-profiles"
         self._profiles_container = self.unit.get_container(self._profiles_container_name)
-        self._profiles_container_meta = self.meta.containers[self._profiles_container_name]
+        _profiles_container_meta = self.meta.containers[self._profiles_container_name]
 
         self._kfam_container_name = "kubeflow-kfam"
         self._kfam_container = self.unit.get_container(self._kfam_container_name)
+
+        # Storage
+        self._storage_name = next(iter(_profiles_container_meta.mounts))
+        self._config_storage_path = Path(
+            _profiles_container_meta.mounts[self._storage_name].location
+        )
 
         self._namespace = self.model.name
         self._name = self.model.app.name
@@ -349,11 +354,8 @@ class KubeflowProfilesOperator(CharmBase):
     def _push_namespace_labels_to_container(self):
         """Push namespace labels to Profile container."""
         labels = self._render_namespace_labels_template()
-        config_storage_path = Path(
-            self._profiles_container_meta.mounts[self._profiles_config_storage_name].location
-        )
         self.profiles_container.push(
-            config_storage_path / "namespace-labels.yaml", labels, make_dirs=True
+            self._config_storage_path / "namespace-labels.yaml", labels, make_dirs=True
         )
 
     def _on_kfam_pebble_ready(self, event):
@@ -395,12 +397,12 @@ class KubeflowProfilesOperator(CharmBase):
 
     def _check_storage(self):
         """Check if storage is available."""
-        config_storage_path = Path(
-            self._profiles_container_meta.mounts[self._profiles_config_storage_name].location
-        )
-
-        if not self.profiles_container.exists(config_storage_path):
-            self.log.info("Storage not yet available")
+        if not self.profiles_container.exists(self._config_storage_path):
+            self.log.info(
+                "Storage %s not yet available on path %s",
+                self._storage_name,
+                self._config_storage_path,
+            )
             raise ErrorWithStatus("Waiting for storage", WaitingStatus)
 
     def _get_interfaces(self):
