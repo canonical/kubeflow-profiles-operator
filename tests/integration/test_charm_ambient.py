@@ -79,8 +79,6 @@ async def test_build_and_deploy(ops_test: OpsTest):
         app=CHARM_NAME, model=ops_test.model, relate_to_ingress=False
     )
 
-    ops_test.model.applications["istio-k8s"].set_config({"platform": ""})
-
     # Deploying grafana-agent-k8s and add all relations
     await deploy_and_assert_grafana_agent(
         ops_test.model, CHARM_NAME, metrics=True, dashboard=False, logging=True
