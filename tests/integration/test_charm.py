@@ -13,8 +13,11 @@ from charmed_kubeflow_chisme.testing import (
     assert_alert_rules,
     assert_logging,
     assert_metrics_endpoint,
+    assert_security_context,
     deploy_and_assert_grafana_agent,
+    generate_container_securitycontext_map,
     get_alert_rules,
+    get_pod_names,
 )
 from charms_dependencies import ISTIO_PILOT
 from lightkube import codecs
@@ -28,6 +31,7 @@ log = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 CHARM_NAME = METADATA["name"]
+CONTAINERS_SECURITY_CONTEXT_MAP = generate_container_securitycontext_map(METADATA)
 
 CONFIG_DATA = yaml.safe_load(Path("./config.yaml").read_text())
 DEFAULT_SECURITY_POLICY = CONFIG_DATA["options"]["security-policy"]["default"]
@@ -35,7 +39,7 @@ DEFAULT_SECURITY_POLICY = CONFIG_DATA["options"]["security-policy"]["default"]
 
 @pytest.mark.abort_on_fail
 @pytest.mark.skip_if_deployed
-async def test_build_and_deploy(ops_test):
+async def test_build_and_deploy(ops_test: OpsTest):
     """Build the charm-under-test and deploy it."""
     my_charm = await ops_test.build_charm(".")
     kfam_image_path = METADATA["resources"]["kfam-image"]["upstream-source"]
@@ -62,7 +66,7 @@ async def test_build_and_deploy(ops_test):
     )
 
 
-async def test_status(ops_test):
+async def test_status(ops_test: OpsTest):
     """Assert on the unit status."""
     assert ops_test.model.applications[CHARM_NAME].units[0].workload_status == "active"
 
@@ -73,14 +77,14 @@ async def test_logging(ops_test: OpsTest):
     await assert_logging(app)
 
 
-async def test_alert_rules(ops_test):
+async def test_alert_rules(ops_test: OpsTest):
     """Test check charm alert rules and rules defined in relation data bag."""
     app = ops_test.model.applications[CHARM_NAME]
     alert_rules = get_alert_rules()
     await assert_alert_rules(app, alert_rules)
 
 
-async def test_metrics_enpoint(ops_test):
+async def test_metrics_endpoint(ops_test: OpsTest):
     """Test metrics_endpoints are defined in relation data bag and their accessibility.
 
     This function gets all the metrics_endpoints from the relation data bag, checks if
@@ -92,13 +96,15 @@ async def test_metrics_enpoint(ops_test):
 
 
 # Parameterize to two different profiles?
-async def test_profile_creation(lightkube_client, profile):
+async def test_profile_creation(lightkube_client: lightkube.Client, profile: str):
     """Test whether a namespace was created for this profile."""
     profile_name = profile
     validate_profile_namespace(lightkube_client, profile_name, DEFAULT_SECURITY_POLICY)
 
 
-async def test_config_option_propagation(ops_test, lightkube_client, profile):
+async def test_config_option_propagation(
+    ops_test: OpsTest, lightkube_client: lightkube.Client, profile: str
+):
     """Test that changes to the security policy are properly propagated."""
     new_security_policy = "baseline"
     await ops_test.model.applications[CHARM_NAME].set_config(
@@ -124,7 +130,7 @@ async def test_config_option_propagation(ops_test, lightkube_client, profile):
     validate_profile_namespace(lightkube_client, profile_name, DEFAULT_SECURITY_POLICY)
 
 
-async def test_health_check_profiles(ops_test):
+async def test_health_check_profiles(ops_test: OpsTest):
     """Test whether the profiles health check endpoint responds with 200."""
     status = await ops_test.model.get_status()
     profiles_units = status["applications"]["kubeflow-profiles"]["units"]
@@ -133,7 +139,7 @@ async def test_health_check_profiles(ops_test):
     assert result.status_code == 200
 
 
-async def test_health_check_kfam(ops_test):
+async def test_health_check_kfam(ops_test: OpsTest):
     """Test whether the kfam health check endpoint responds with 200."""
     status = await ops_test.model.get_status()
     profiles_units = status["applications"]["kubeflow-profiles"]["units"]
@@ -280,3 +286,24 @@ def validate_profile_namespace(
             f"Label '{name}' on Profile's Namespace has value '{actual_value}', "
             f"expected '{expected_value}'"
         )
+
+
+@pytest.mark.parametrize("container_name", list(CONTAINERS_SECURITY_CONTEXT_MAP.keys()))
+async def test_container_security_context(
+    ops_test: OpsTest,
+    lightkube_client: lightkube.Client,
+    container_name: str,
+):
+    """Test container security context is correctly set.
+
+    Verify that container spec defines the security context with correct
+    user ID and group ID.
+    """
+    pod_name = get_pod_names(ops_test.model.name, CHARM_NAME)[0]
+    assert_security_context(
+        lightkube_client,
+        pod_name,
+        container_name,
+        CONTAINERS_SECURITY_CONTEXT_MAP,
+        ops_test.model.name,
+    )
