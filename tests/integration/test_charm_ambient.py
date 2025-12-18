@@ -205,15 +205,10 @@ async def test_authorization_policy_has_correct_principals(
     policy_str = str(ns_owner_auth_policy.to_dict())
 
     # Check that all three principals are mentioned in the policy
-    assert (
-        ISTIO_GATEWAY_PRINCIPAL in policy_str
-    ), f"Expected principal {ISTIO_GATEWAY_PRINCIPAL} not found in authorization policy"
-    assert (
-        JUPYTER_CONTROLLER_PRINCIPAL in policy_str
-    ), f"Expected principal {JUPYTER_CONTROLLER_PRINCIPAL} not found in authorization policy"
-    assert (
-        KFP_UI_PRINCIPAL in policy_str
-    ), f"Expected principal {KFP_UI_PRINCIPAL} not found in authorization policy"
+    for principal in [ISTIO_GATEWAY_PRINCIPAL, JUPYTER_CONTROLLER_PRINCIPAL, KFP_UI_PRINCIPAL]:
+        assert principal in policy_str, (
+            f"Expected principal {principal} not found in authorization policy"
+        )
 
 
 async def test_dashboard_to_kfam_communication(ops_test: OpsTest):
