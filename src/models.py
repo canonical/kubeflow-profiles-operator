@@ -13,3 +13,7 @@ class CharmConfig(BaseModel):
     port: int = Field(ge=1024, le=65535)
     manager_port: int = Field(ge=1024, le=65535)
     security_policy: Literal["privileged", "baseline", "restricted"]
+    istio_gateway_principal: str
+    notebook_controller_principal: str
+    kfp_ui_principal: str
+    service_mesh_mode: Literal["istio-sidecar", "istio-ambient"]

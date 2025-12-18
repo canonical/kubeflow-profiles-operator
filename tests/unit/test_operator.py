@@ -12,6 +12,7 @@ def test_log_forwarding(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
 ):
     """Test LogForwarder initialization."""
     with patch("charm.LogForwarder") as mock_logging:
@@ -23,6 +24,7 @@ def test_metrics(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
 ):
     """Test MetricsEndpointProvider initialization."""
     with patch("charm.MetricsEndpointProvider") as mocked_metrics_endpoint_provider:
@@ -38,6 +40,7 @@ def test_not_leader(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
 ):
     """Test not a leader scenario."""
     harness.set_leader(False)
@@ -70,6 +73,7 @@ def test_invalid_port(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
     invalid_port: int,
 ):
     """Test that the charm is properly blocking on invalid port."""
@@ -81,7 +85,11 @@ def test_invalid_port(
 
 @pytest.mark.parametrize("invalid_port", [80, 100000])
 def test_invalid_manager_port(
-    harness: Harness, mocked_kubernetes_service_patcher, mocked_resource_handler, invalid_port: int
+    harness: Harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
+    mocked_service_mesh_consumer,
+    invalid_port: int,
 ):
     """Test that the charm is properly blocking on an invalid manager port."""
     harness.update_config({"manager-port": invalid_port})
@@ -94,6 +102,7 @@ def test_invalid_security_policy(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
 ):
     """Test that the charm is properly blocking on invalid security policy."""
     harness.update_config({"security-policy": "invalid-value"})
@@ -106,6 +115,7 @@ def test_profiles_container_running(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
 ):
     """Test that kubeflow-profiles container is running."""
     harness.begin_with_initial_hooks()
@@ -117,6 +127,7 @@ def test_kfam_container_running(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
 ):
     """Test that kubeflow-kfam container is running."""
     harness.begin_with_initial_hooks()
@@ -128,6 +139,7 @@ def test_no_relation(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
 ):
     """Test no relation scenario."""
     harness.add_oci_resource(
@@ -144,6 +156,7 @@ def test_profiles_pebble_ready_first_scenario(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
 ):
     """Test (install -> profiles pebble ready -> kfam pebble ready) reach Active.."""
     harness.begin()
@@ -157,6 +170,7 @@ def test_kfam_pebble_ready_first_scenario(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
 ):
     """Test (install -> kfam pebble ready -> profiles pebble ready) reach Active."""
     harness.begin()
@@ -166,13 +180,25 @@ def test_kfam_pebble_ready_first_scenario(
     assert harness.charm.model.unit.status == ActiveStatus("")
 
 
+@pytest.mark.parametrize(
+    "service_mesh_mode,create_waypoint",
+    [
+        ("istio-sidecar", "false"),
+        ("istio-ambient", "true"),
+    ],
+)
 def test_profiles_pebble_layer(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
+    service_mesh_mode: str,
+    create_waypoint: str,
 ):
-    """Test creation of Profiles Pebble layer. Only testing specific items."""
+    """Test creation of Profiles Pebble layer with different service mesh modes."""
     harness.set_model_name("test_kubeflow")
+    if service_mesh_mode != "istio-sidecar":
+        harness.update_config({"service-mesh-mode": service_mesh_mode})
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-profiles")
     pebble_plan = harness.get_container_pebble_plan("kubeflow-profiles")
@@ -181,10 +207,11 @@ def test_profiles_pebble_layer(
     pebble_plan_info = pebble_plan.to_dict()
     assert (
         pebble_plan_info["services"]["kubeflow-profiles"]["command"] == "/manager "
-        "-userid-header "
-        "kubeflow-userid "
+        "-userid-header kubeflow-userid "
         "-userid-prefix "
         '""'
+        f" -service-mesh-mode {service_mesh_mode} "
+        f"-create-waypoint {create_waypoint}"
     )
 
 
@@ -192,6 +219,7 @@ def test_kfam_pebble_layer(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
+    mocked_service_mesh_consumer,
 ):
     """Test creation of kfam Pebble layer. Only testing specific items."""
     harness.set_model_name("test_kubeflow")
@@ -211,3 +239,16 @@ def test_kfam_pebble_layer(
         "-userid-prefix "
         '""'
     )
+
+
+def test_invalid_service_mesh_mode(
+    harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
+    mocked_service_mesh_consumer,
+):
+    """Test that the charm is properly blocking on invalid service-mesh-mode."""
+    harness.update_config({"service-mesh-mode": "invalid-mode"})
+    harness.begin_with_initial_hooks()
+    assert isinstance(harness.charm.model.unit.status, BlockedStatus)
+    assert "Invalid config:" in harness.charm.model.unit.status.message
