@@ -115,7 +115,7 @@ class KubeflowProfilesOperator(CharmBase):
         self._create_waypoint = config.service_mesh_mode == "istio-ambient"
 
         if self.unit.is_leader():
-            self._mesh = ServiceMeshConsumer(
+            ServiceMeshConsumer(
                 self,
                 policies=[
                     AppPolicy(
