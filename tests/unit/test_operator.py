@@ -180,14 +180,25 @@ def test_kfam_pebble_ready_first_scenario(
     assert harness.charm.model.unit.status == ActiveStatus("")
 
 
+@pytest.mark.parametrize(
+    "service_mesh_mode,create_waypoint",
+    [
+        ("istio-sidecar", "false"),
+        ("istio-ambient", "true"),
+    ],
+)
 def test_profiles_pebble_layer(
     harness: Harness,
     mocked_kubernetes_service_patcher,
     mocked_resource_handler,
     mocked_service_mesh_consumer,
+    service_mesh_mode: str,
+    create_waypoint: str,
 ):
-    """Test creation of Profiles Pebble layer. Only testing specific items."""
+    """Test creation of Profiles Pebble layer with different service mesh modes."""
     harness.set_model_name("test_kubeflow")
+    if service_mesh_mode != "istio-sidecar":
+        harness.update_config({"service-mesh-mode": service_mesh_mode})
     harness.begin_with_initial_hooks()
     harness.container_pebble_ready("kubeflow-profiles")
     pebble_plan = harness.get_container_pebble_plan("kubeflow-profiles")
@@ -199,8 +210,8 @@ def test_profiles_pebble_layer(
         "-userid-header kubeflow-userid "
         "-userid-prefix "
         '""'
-        " -service-mesh-mode istio-sidecar "
-        "-create-waypoint false"
+        f" -service-mesh-mode {service_mesh_mode} "
+        f"-create-waypoint {create_waypoint}"
     )
 
 
@@ -241,28 +252,3 @@ def test_invalid_service_mesh_mode(
     harness.begin_with_initial_hooks()
     assert isinstance(harness.charm.model.unit.status, BlockedStatus)
     assert "Invalid config:" in harness.charm.model.unit.status.message
-
-
-def test_profiles_pebble_layer_with_ambient_mode(
-    harness,
-    mocked_kubernetes_service_patcher,
-    mocked_resource_handler,
-    mocked_service_mesh_consumer,
-):
-    """Test creation of Profiles Pebble layer with istio-ambient mode."""
-    harness.set_model_name("test_kubeflow")
-    harness.update_config({"service-mesh-mode": "istio-ambient"})
-    harness.begin_with_initial_hooks()
-    harness.container_pebble_ready("kubeflow-profiles")
-    pebble_plan = harness.get_container_pebble_plan("kubeflow-profiles")
-    assert pebble_plan
-    assert pebble_plan._services
-    pebble_plan_info = pebble_plan.to_dict()
-    assert (
-        pebble_plan_info["services"]["kubeflow-profiles"]["command"] == "/manager "
-        "-userid-header kubeflow-userid "
-        "-userid-prefix "
-        '""'
-        " -service-mesh-mode istio-ambient "
-        "-create-waypoint true"
-    )
