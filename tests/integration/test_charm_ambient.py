@@ -206,9 +206,9 @@ async def test_authorization_policy_has_correct_principals(
 
     # Check that all three principals are mentioned in the policy
     for principal in [ISTIO_GATEWAY_PRINCIPAL, JUPYTER_CONTROLLER_PRINCIPAL, KFP_UI_PRINCIPAL]:
-        assert principal in policy_str, (
-            f"Expected principal {principal} not found in authorization policy"
-        )
+        assert (
+            principal in policy_str
+        ), f"Expected principal {principal} not found in authorization policy"
 
 
 async def test_dashboard_to_kfam_communication(ops_test: OpsTest):
