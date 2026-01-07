@@ -59,8 +59,8 @@ def test_storage_not_available(
     storage_id = harness.charm.model.storages["config-profiles"][0].full_id
     # remove storage so that the storage check fails
     harness.remove_storage(storage_id)
-    # trigger any event observed by the main hook handler
-    harness.charm.on.config_changed.emit()
+    # trigger the event that evokes the storage check:
+    harness.charm.on.kubeflow_profiles_pebble_ready.emit()
     assert isinstance(harness.charm.model.unit.status, WaitingStatus)
     assert "Waiting for storage" in harness.charm.model.unit.status.message
 
