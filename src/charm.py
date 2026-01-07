@@ -330,8 +330,8 @@ class KubeflowProfilesOperator(CharmBase):
         except ErrorWithStatus as error:
             self.model.unit = error.status
             return
-        self._on_event(event)
         self._check_profiles_container_storage()
+        self._on_event(event)
 
     def _update_profile_namespace_security_policy_labels(self):
         """Update security policy label for all existing profile namespaces."""
