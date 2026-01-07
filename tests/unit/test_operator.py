@@ -7,6 +7,9 @@ import pytest
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.testing import Harness
 
+WORKLOAD_CONTAINER_NAME_FOR_KFAM = "kubeflow-kfam"
+WORKLOAD_CONTAINER_NAME_FOR_PROFILES = "kubeflow-profiles"
+
 
 def test_log_forwarding(
     harness: Harness,
@@ -42,8 +45,8 @@ def test_not_leader(
     """Test not a leader scenario."""
     harness.set_leader(False)
     harness.begin_with_initial_hooks()
-    harness.container_pebble_ready("kubeflow-profiles")
-    harness.container_pebble_ready("kubeflow-kfam")
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_KFAM)
     assert harness.charm.model.unit.status == WaitingStatus("Waiting for leadership")
 
 
@@ -60,7 +63,7 @@ def test_storage_not_available(
     # remove storage so that the storage check fails
     harness.remove_storage(storage_id)
     # trigger the event that evokes the storage check:
-    harness.charm.on.kubeflow_profiles_pebble_ready.emit()
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
     assert isinstance(harness.charm.model.unit.status, WaitingStatus)
     assert "Waiting for storage" in harness.charm.model.unit.status.message
 
@@ -109,7 +112,7 @@ def test_profiles_container_running(
 ):
     """Test that kubeflow-profiles container is running."""
     harness.begin_with_initial_hooks()
-    harness.container_pebble_ready("kubeflow-profiles")
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
     assert harness.charm.profiles_container.get_service("kubeflow-profiles").is_running()
 
 
@@ -120,7 +123,7 @@ def test_kfam_container_running(
 ):
     """Test that kubeflow-kfam container is running."""
     harness.begin_with_initial_hooks()
-    harness.container_pebble_ready("kubeflow-kfam")
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_KFAM)
     assert harness.charm.kfam_container.get_service("kubeflow-kfam").is_running()
 
 
@@ -148,7 +151,7 @@ def test_profiles_pebble_ready_first_scenario(
     """Test (install -> profiles pebble ready -> kfam pebble ready) reach Active.."""
     harness.begin()
     harness.charm.on.install.emit()
-    harness.container_pebble_ready("kubeflow-profiles")
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
     harness.container_pebble_ready("kubeflow-kfam")
     assert harness.charm.model.unit.status == ActiveStatus("")
 
@@ -161,8 +164,8 @@ def test_kfam_pebble_ready_first_scenario(
     """Test (install -> kfam pebble ready -> profiles pebble ready) reach Active."""
     harness.begin()
     harness.charm.on.install.emit()
-    harness.container_pebble_ready("kubeflow-kfam")
-    harness.container_pebble_ready("kubeflow-profiles")
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_KFAM)
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
     assert harness.charm.model.unit.status == ActiveStatus("")
 
 
@@ -174,8 +177,8 @@ def test_profiles_pebble_layer(
     """Test creation of Profiles Pebble layer. Only testing specific items."""
     harness.set_model_name("test_kubeflow")
     harness.begin_with_initial_hooks()
-    harness.container_pebble_ready("kubeflow-profiles")
-    pebble_plan = harness.get_container_pebble_plan("kubeflow-profiles")
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
+    pebble_plan = harness.get_container_pebble_plan(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
     assert pebble_plan
     assert pebble_plan._services
     pebble_plan_info = pebble_plan.to_dict()
@@ -196,8 +199,8 @@ def test_kfam_pebble_layer(
     """Test creation of kfam Pebble layer. Only testing specific items."""
     harness.set_model_name("test_kubeflow")
     harness.begin_with_initial_hooks()
-    harness.container_pebble_ready("kubeflow-kfam")
-    pebble_plan = harness.get_container_pebble_plan("kubeflow-kfam")
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_KFAM)
+    pebble_plan = harness.get_container_pebble_plan(WORKLOAD_CONTAINER_NAME_FOR_KFAM)
     assert pebble_plan
     assert pebble_plan._services
     pebble_plan_info = pebble_plan.to_dict()
