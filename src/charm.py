@@ -13,12 +13,7 @@ from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRunt
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler as KRH  # noqa: N817
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
-from charms.istio_beacon_k8s.v0.service_mesh import (
-    AppPolicy,
-    Endpoint,
-    ServiceMeshConsumer,
-    UnitPolicy,
-)
+from charms.istio_beacon_k8s.v0.service_mesh import AppPolicy, ServiceMeshConsumer, UnitPolicy
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
@@ -114,20 +109,18 @@ class KubeflowProfilesOperator(CharmBase):
         # Automatically determine create_waypoint based on service_mesh_mode
         self._create_waypoint = config.service_mesh_mode == "istio-ambient"
 
-        if self.unit.is_leader():
-            ServiceMeshConsumer(
-                self,
-                policies=[
-                    AppPolicy(
-                        relation="kubeflow-profiles",
-                        endpoints=[Endpoint(ports=[self._manager_port, self._kfam_port])],
-                    ),
-                    UnitPolicy(
-                        relation="metrics-endpoint",
-                        ports=[self._manager_port, self._kfam_port],
-                    ),
-                ],
-            )
+        self._mesh = ServiceMeshConsumer(
+            self,
+            policies=[
+                AppPolicy(
+                    relation="kubeflow-profiles",
+                    endpoints=[],
+                ),
+                UnitPolicy(
+                    relation="metrics-endpoint",
+                ),
+            ],
+        )
 
         # setup events to be handled by specific event handlers
         self.framework.observe(self.on.install, self._on_install)
