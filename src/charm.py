@@ -357,6 +357,7 @@ class KubeflowProfilesOperator(CharmBase):
         except ErrorWithStatus as error:
             self.model.unit = error.status
             return
+        self._check_profiles_container_storage()
         self._on_event(event)
 
     def _update_profile_namespace_security_policy_labels(self):
@@ -422,7 +423,7 @@ class KubeflowProfilesOperator(CharmBase):
             self.log.info("Not a leader, skipping setup")
             raise ErrorWithStatus("Waiting for leadership", WaitingStatus)
 
-    def _check_storage(self):
+    def _check_profiles_container_storage(self):
         """Check if storage is available."""
         if not self.profiles_container.exists(self._config_storage_path):
             self.log.info(
@@ -473,7 +474,6 @@ class KubeflowProfilesOperator(CharmBase):
         """Perform all required actions for the Charm."""
         try:
             self._check_leader()
-            self._check_storage()
             interfaces = self._get_interfaces()
             self._send_info(interfaces)
             self._deploy_k8s_resources()
