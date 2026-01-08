@@ -1,11 +1,9 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 """Unit tests. Harness and Mocks are defined in test_operator_fixtures.py."""
-from re import match
 from unittest.mock import ANY, patch
 
 import pytest
-from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.testing import Harness
 
@@ -64,16 +62,10 @@ def test_storage_not_available(
     storage_id = harness.charm.model.storages["config-profiles"][0].full_id
     # remove storage so that the storage check fails
     harness.remove_storage(storage_id)
-
-    with pytest.raises(ErrorWithStatus) as exception_info:
-        # trigger the event that evokes the storage check
-        harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
-
-        # assert the exception and the charm status are as expected
-        assert exception_info.value.status_type(WaitingStatus)
-        assert match("Storage .* not yet available on path .*", str(exception_info))
-        assert isinstance(harness.charm.model.unit.status, WaitingStatus)
-        assert "Waiting for storage" in harness.charm.model.unit.status.message
+    # trigger the event that evokes the storage check
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
+    # assert the the charm status is as expected
+    assert harness.charm.model.unit.status == WaitingStatus("Waiting for storage")
 
 
 @pytest.mark.parametrize("invalid_port", [80, 100000])

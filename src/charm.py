@@ -270,7 +270,7 @@ class KubeflowProfilesOperator(CharmBase):
     def _deploy_k8s_resources(self):
         """Deploy K8S resources."""
         try:
-            self.unit.status = MaintenanceStatus("Creating K8S resources")
+            self.model.unit.status = MaintenanceStatus("Creating K8S resources")
             self.k8s_resource_handler.apply()
 
         except ApiError as e:
@@ -327,10 +327,10 @@ class KubeflowProfilesOperator(CharmBase):
         # TODO: extract exception handling to _check_container_connection()
         try:
             self._check_container_connection(self.profiles_container)
+            self._check_profiles_container_storage()
         except ErrorWithStatus as error:
-            self.model.unit = error.status
+            self.model.unit.status = error.status
             return
-        self._check_profiles_container_storage()
         self._on_event(event)
 
     def _update_profile_namespace_security_policy_labels(self):
@@ -364,7 +364,7 @@ class KubeflowProfilesOperator(CharmBase):
         try:
             self._check_container_connection(self.kfam_container)
         except ErrorWithStatus as error:
-            self.model.unit = error.status
+            self.model.unit.status = error.status
             return
         self._on_event(event)
 
