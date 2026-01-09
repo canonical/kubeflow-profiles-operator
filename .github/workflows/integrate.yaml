@@ -45,6 +45,9 @@ jobs:
   deploy:
     name: Integration Test
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        test-type: [integration, integration-ambient]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -57,9 +60,18 @@ jobs:
           sudo rm -rf /run/containerd
           sudo snap install concierge --classic
           sudo concierge prepare --trace
+
+      - name: Configure Cilium for Canonical K8s
+        if: matrix.test-type == 'integration-ambient'
+        run: |
+          # Configure Cilium for Canonical K8s to work with Charmed Istio (Ambient mode)
+          # See https://canonical-service-mesh-documentation.readthedocs-hosted.com/en/latest/how-to/use-charmed-istio-with-canonical-kubernetes/
+          kubectl -n kube-system patch configmap cilium-config --type merge --patch '{"data":{"bpf-lb-sock-hostns-only":"true"}}'
+          kubectl -n kube-system rollout restart daemonset cilium
+
       - name: Run test
         run: |
-          tox -e integration -- --model testing
+          tox -e ${{ matrix.test-type }} -- --model kubeflow
 
       - name: Get all
         run: kubectl get all -A
@@ -70,15 +82,15 @@ jobs:
         if: failure()
 
       - name: Get kubeflow-profiles workload logs
-        run: kubectl logs --tail 100 -ntesting -ljuju-app=kubeflow-profiles -c kubeflow-profiles
+        run: kubectl logs --tail 100 -nkubeflow -lapp.kubernetes.io/name=kubeflow-profiles -c kubeflow-profiles
         if: failure()
 
       - name: Get kubeflow-kfam workload logs
-        run: kubectl logs --tail 100 -ntesting -ljuju-app=kubeflow-profiles -c kubeflow-kfam
+        run: kubectl logs --tail 100 -nkubeflow -lapp.kubernetes.io/name=kubeflow-profiles -c kubeflow-kfam
         if: failure()
 
       - name: Get operator logs
-        run: kubectl logs --tail 100 -ntesting -ljuju-operator
+        run: kubectl logs --tail 100 -nkubeflow -lapp.kubernetes.io/name=kubeflow-profiles -c charm
         if: failure()
 
       - name: Save debug artifacts

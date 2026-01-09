@@ -42,3 +42,11 @@ def mocked_lightkube_client(mocker, mocked_resource_handler):
     """Prevents lightkube clients from being created, returning a mock instead."""
     mocked_resource_handler.lightkube_client = MagicMock()
     yield mocked_resource_handler.lightkube_client
+
+
+@pytest.fixture()
+def mocked_service_mesh_consumer(mocker):
+    """Mock ServiceMeshConsumer."""
+    mocked_service_mesh_consumer = mocker.patch("charm.ServiceMeshConsumer")
+    mocked_service_mesh_consumer.return_value = MagicMock()
+    yield mocked_service_mesh_consumer

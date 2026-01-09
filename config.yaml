@@ -17,3 +17,15 @@ options:
       Specify the security policy to enforce in user workloads. The only two allowed values are `privileged` and `baseline`.
 
       This option changes the label that is added to all workloads in the profile's namespace. For more information, refer to: https://kubernetes.io/docs/concepts/security/pod-security-standards/
+  istio-gateway-principal:
+    type: string
+    default: "cluster.local/ns/kubeflow/sa/istio-ingressgateway-workload-service-account"
+    description: >
+      The principal to use for the Istio Gateway. This should match the service account used by the Istio Ingress Gateway.
+
+      When integrating with Istio Ambient in the `kubeflow` namespace, set to `cluster.local/ns/kubeflow/sa/istio-ingress-k8s-istio`.
+  service-mesh-mode:
+    type: string
+    default: "istio-sidecar"
+    description: >
+      The service mesh mode to use. Can be `istio-sidecar` or `istio-ambient`
