@@ -4,13 +4,19 @@ output "app_name" {
 
 output "provides" {
   value = {
-    kubeflow_profiles = "kubeflow-profiles"
-    metrics_endpoint  = "metrics-endpoint"
+    kubeflow_profiles            = "kubeflow-profiles",
+    metrics_endpoint             = "metrics-endpoint",
+    profiles_backup_config       = "profiles-backup-config",
+    provide_cmr_mesh             = "provide-cmr-mesh",
+    user_workloads_backup_config = "user-workloads-backup-config"
   }
 }
 
 output "requires" {
   value = {
-    logging = "logging"
+    ingress          = "ingress",
+    logging          = "logging",
+    require_cmr_mesh = "require-cmr-mesh",
+    service_mesh     = "service-mesh"
   }
 }
