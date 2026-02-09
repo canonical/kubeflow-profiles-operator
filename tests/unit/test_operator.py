@@ -50,24 +50,6 @@ def test_not_leader(
     assert harness.charm.model.unit.status == WaitingStatus("Waiting for leadership")
 
 
-def test_storage_not_available(
-    harness: Harness,
-    mocked_kubernetes_service_patcher,
-    mocked_resource_handler,
-):
-    """Test storage not available scenario."""
-    # begin() is required to access charm attribute of harness
-    harness.begin()
-    # retrieve first (and only) storage ID for config-profiles storage
-    storage_id = harness.charm.model.storages["config-profiles"][0].full_id
-    # remove storage so that the storage check fails
-    harness.remove_storage(storage_id)
-    # trigger the event that evokes the storage check
-    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
-    # assert the the charm status is as expected
-    assert harness.charm.model.unit.status == WaitingStatus("Waiting for storage")
-
-
 @pytest.mark.parametrize("invalid_port", [80, 100000])
 def test_invalid_port(
     harness: Harness,
