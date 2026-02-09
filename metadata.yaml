@@ -13,8 +13,8 @@ containers:
     uid: 584792
     gid: 584792
     mounts:
-      - storage: config-profiles
-        location: /etc/profile-controller
+    - storage: config-profiles
+      location: /etc/profile-controller
   kubeflow-kfam:
     resource: kfam-image
     uid: 584792
@@ -26,7 +26,7 @@ resources:
     auto-fetch: true
     # TODO: Replace image with upstream image or rock
     # once https://github.com/kubeflow/dashboard/pull/127 is merged
-    upstream-source: kimwnasptd/profile-controller:ambient4
+    upstream-source: docker.io/charmedkubeflow/profile-controller:1.10.0-06ad3c6
   kfam-image:
     type: oci-image
     description: Access Management image
