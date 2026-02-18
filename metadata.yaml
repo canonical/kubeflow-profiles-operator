@@ -26,7 +26,7 @@ resources:
     auto-fetch: true
     # TODO: Replace image with upstream image or rock
     # once https://github.com/kubeflow/dashboard/pull/127 is merged
-    upstream-source: nohaihab/profile-controller:ambient
+    upstream-source: nohaihab/profile-controller:ambient2
   kfam-image:
     type: oci-image
     description: Access Management image

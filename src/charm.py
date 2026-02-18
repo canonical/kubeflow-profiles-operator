@@ -41,6 +41,7 @@ from models import CharmConfig
 # Service mesh principals
 NOTEBOOK_CONTROLLER_PRINCIPAL = "cluster.local/ns/kubeflow/sa/jupyter-controller"
 KFP_UI_PRINCIPAL = "cluster.local/ns/kubeflow/sa/kfp-ui"
+KATIB_CONTROLLER_PRINCIPAL = "cluster.local/ns/kubeflow/sa/katib-controller"
 
 
 class KubeflowProfilesOperator(CharmBase):
@@ -65,6 +66,7 @@ class KubeflowProfilesOperator(CharmBase):
                 "istio_gateway_principal": self.model.config["istio-gateway-principal"],
                 "notebook_controller_principal": NOTEBOOK_CONTROLLER_PRINCIPAL,
                 "kfp_ui_principal": KFP_UI_PRINCIPAL,
+                "katib_controller_principal": KATIB_CONTROLLER_PRINCIPAL,
                 "service_mesh_mode": self.model.config["service-mesh-mode"],
             }
             config = CharmConfig(**config_data)
@@ -105,6 +107,7 @@ class KubeflowProfilesOperator(CharmBase):
         self._istio_gateway_principal = config.istio_gateway_principal
         self._notebook_controller_principal = config.notebook_controller_principal
         self._kfp_ui_principal = config.kfp_ui_principal
+        self._katib_controller_principal = config.katib_controller_principal
         self._service_mesh_mode = config.service_mesh_mode
         # Automatically determine create_waypoint based on service_mesh_mode
         self._create_waypoint = config.service_mesh_mode == "istio-ambient"
@@ -189,6 +192,7 @@ class KubeflowProfilesOperator(CharmBase):
             "ISTIO_INGRESS_GATEWAY_PRINCIPAL": self._istio_gateway_principal,  # noqa E501
             "NOTEBOOK_CONTROLLER_PRINCIPAL": self._notebook_controller_principal,
             "KFP_UI_PRINCIPAL": self._kfp_ui_principal,
+            "KATIB_CONTROLLER_PRINCIPAL": self._katib_controller_principal,
         }
 
     @property
