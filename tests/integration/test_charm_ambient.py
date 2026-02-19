@@ -42,6 +42,7 @@ DEFAULT_SECURITY_POLICY = CONFIG_DATA["options"]["security-policy"]["default"]
 ISTIO_GATEWAY_PRINCIPAL = "cluster.local/ns/kubeflow/sa/istio-ingress-k8s-istio"
 JUPYTER_CONTROLLER_PRINCIPAL = "cluster.local/ns/kubeflow/sa/jupyter-controller"
 KFP_UI_PRINCIPAL = "cluster.local/ns/kubeflow/sa/kfp-ui"
+KATIB_CONTROLLER_PRINCIPAL = "cluster.local/ns/kubeflow/sa/katib-controller"
 AMBIENT_CONFIG = {
     "service-mesh-mode": "istio-ambient",
     "istio-gateway-principal": ISTIO_GATEWAY_PRINCIPAL,
@@ -189,7 +190,7 @@ async def test_waypoint_gateway_created_for_profile(
 async def test_authorization_policy_has_correct_principals(
     ops_test: OpsTest, lightkube_client: lightkube.Client, profile
 ):
-    """Test whether the authorization policy contains the three configured principals."""
+    """Test whether the authorization policy contains the four configured principals."""
 
     @retry(
         wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_delay(60), reraise=True
@@ -204,8 +205,13 @@ async def test_authorization_policy_has_correct_principals(
     # Convert the policy to a string to search for principals
     policy_str = str(ns_owner_auth_policy.to_dict())
 
-    # Check that all three principals are mentioned in the policy
-    for principal in [ISTIO_GATEWAY_PRINCIPAL, JUPYTER_CONTROLLER_PRINCIPAL, KFP_UI_PRINCIPAL]:
+    # Check that all four principals are mentioned in the policy
+    for principal in [
+        ISTIO_GATEWAY_PRINCIPAL,
+        JUPYTER_CONTROLLER_PRINCIPAL,
+        KFP_UI_PRINCIPAL,
+        KATIB_CONTROLLER_PRINCIPAL,
+    ]:
         assert (
             principal in policy_str
         ), f"Expected principal {principal} not found in authorization policy"

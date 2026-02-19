@@ -16,4 +16,5 @@ class CharmConfig(BaseModel):
     istio_gateway_principal: str
     notebook_controller_principal: str
     kfp_ui_principal: str
+    katib_controller_principal: str
     service_mesh_mode: Literal["istio-sidecar", "istio-ambient"]
