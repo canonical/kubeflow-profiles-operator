@@ -71,7 +71,7 @@ jobs:
 
       - name: Run test
         run: |
-          tox -e ${{ matrix.test-type }} -- --model kubeflow
+          tox -e ${{ matrix.test-type }} -- --model testing
 
       - name: Get all
         run: kubectl get all -A
@@ -82,15 +82,15 @@ jobs:
         if: failure()
 
       - name: Get kubeflow-profiles workload logs
-        run: kubectl logs --tail 100 -nkubeflow -lapp.kubernetes.io/name=kubeflow-profiles -c kubeflow-profiles
+        run: kubectl logs --tail 100 -n testing -l app.kubernetes.io/name=kubeflow-profiles -c kubeflow-profiles
         if: failure()
 
       - name: Get kubeflow-kfam workload logs
-        run: kubectl logs --tail 100 -nkubeflow -lapp.kubernetes.io/name=kubeflow-profiles -c kubeflow-kfam
+        run: kubectl logs --tail 100 -n testing -l app.kubernetes.io/name=kubeflow-profiles -c kubeflow-kfam
         if: failure()
 
       - name: Get operator logs
-        run: kubectl logs --tail 100 -nkubeflow -lapp.kubernetes.io/name=kubeflow-profiles -c charm
+        run: kubectl logs --tail 100 -n testing -l app.kubernetes.io/name=kubeflow-profiles -c charm
         if: failure()
 
       - name: Save debug artifacts
