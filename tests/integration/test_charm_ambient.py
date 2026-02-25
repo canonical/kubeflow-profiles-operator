@@ -105,6 +105,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
         KUBEFLOW_DASHBOARD.charm,
         channel=KUBEFLOW_DASHBOARD.channel,
         trust=KUBEFLOW_DASHBOARD.trust,
+        revision=944,
     )
 
     await ops_test.model.integrate(
