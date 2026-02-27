@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 """Integration tests for Kueflow Profiles Operator."""
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 import jinja2
@@ -56,19 +57,22 @@ GATEWAY = create_namespaced_resource(
 AUTH_POLICY_NAME = "ns-owner-access-istio"
 
 
+@dataclass
 class Principals:
-    """Class to model principals and ambient configuration."""
+    """Dataclass to model principals and ambient configuration."""
 
-    def __init__(self, namespace: str):
-        """Class to model principals and ambient configuration.
+    namespace: str
 
-        Args:
-            namespace (str): K8s namespace for principals
-        """
-        self.istio_gateway_principal = f"cluster.local/ns/{namespace}/sa/istio-ingress-k8s-istio"
-        self.jupyter_controller_principal = f"cluster.local/ns/{namespace}/sa/jupyter-controller"
-        self.kfp_ui_principal = f"cluster.local/ns/{namespace}/sa/kfp-ui"
-        self.katib_controller_principal = f"cluster.local/ns/{namespace}/sa/katib-controller"
+    def __post_init__(self):
+        """Class to model principals and ambient configuration."""
+        self.istio_gateway_principal = (
+            f"cluster.local/ns/{self.namespace}/sa/istio-ingress-k8s-istio"
+        )
+        self.jupyter_controller_principal = (
+            f"cluster.local/ns/{self.namespace}/sa/jupyter-controller"
+        )
+        self.kfp_ui_principal = f"cluster.local/ns/{self.namespace}/sa/kfp-ui"
+        self.katib_controller_principal = f"cluster.local/ns/{self.namespace}/sa/katib-controller"
         self.ambient_config = {
             "service-mesh-mode": "istio-ambient",
             "istio-gateway-principal": self.istio_gateway_principal,
