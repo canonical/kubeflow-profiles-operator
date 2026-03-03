@@ -58,6 +58,7 @@ class KubeflowProfilesOperator(CharmBase):
         notebook_controller_principal = f"cluster.local/ns/{self._namespace}/sa/jupyter-controller"
         kfp_ui_principal = f"cluster.local/ns/{self._namespace}/sa/kfp-ui"
         katib_controller_principal = f"cluster.local/ns/{self._namespace}/sa/katib-controller"
+        istio_gateway_principal = f"cluster.local/ns/{self.istio_gateway_namespace}/sa/{self.istio_gateway_service_account}"  # noqa E501
 
         # Validate all config options
         try:
@@ -65,7 +66,7 @@ class KubeflowProfilesOperator(CharmBase):
                 "port": self.model.config["port"],
                 "manager_port": self.model.config["manager-port"],
                 "security_policy": self.model.config["security-policy"],
-                "istio_gateway_principal": self.model.config["istio-gateway-principal"],
+                "istio_gateway_principal": istio_gateway_principal,
                 "notebook_controller_principal": notebook_controller_principal,
                 "kfp_ui_principal": kfp_ui_principal,
                 "katib_controller_principal": katib_controller_principal,
@@ -169,6 +170,16 @@ class KubeflowProfilesOperator(CharmBase):
                 ),
                 refresh_event=[self.on.config_changed, self.on.update_status],
             )
+
+    @property
+    def istio_gateway_namespace(self) -> str:
+        """Return Istio Gateway namespace configuration."""
+        return self.model.config["istio-gateway-namespace"]
+
+    @property
+    def istio_gateway_service_account(self) -> str:
+        """Return Istio Gateway Service Account configuration."""
+        return self.model.config["istio-gateway-service-account"]
 
     @property
     def profiles_container(self):
