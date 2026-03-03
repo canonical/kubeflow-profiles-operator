@@ -75,7 +75,8 @@ class Principals:
         self.katib_controller_principal = f"cluster.local/ns/{self.namespace}/sa/katib-controller"
         self.ambient_config = {
             "service-mesh-mode": "istio-ambient",
-            "istio-gateway-principal": self.istio_gateway_principal,
+            "istio-gateway-namespace": self.namespace,
+            "istio-gateway-service-account": "istio-ingress-k8s-istio",
         }
 
 
