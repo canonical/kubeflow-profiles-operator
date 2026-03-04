@@ -38,11 +38,6 @@ from constants import (
 )
 from models import CharmConfig
 
-# Service mesh principals
-NOTEBOOK_CONTROLLER_PRINCIPAL = "cluster.local/ns/kubeflow/sa/jupyter-controller"
-KFP_UI_PRINCIPAL = "cluster.local/ns/kubeflow/sa/kfp-ui"
-KATIB_CONTROLLER_PRINCIPAL = "cluster.local/ns/kubeflow/sa/katib-controller"
-
 
 class KubeflowProfilesOperator(CharmBase):
     """A Juju Charm for Kubeflow Profiles Operator."""
@@ -57,16 +52,24 @@ class KubeflowProfilesOperator(CharmBase):
 
         self.state.set_default(last_security_policy="")
 
+        self._namespace = self.model.name
+
+        # Service mesh principals
+        notebook_controller_principal = f"cluster.local/ns/{self._namespace}/sa/jupyter-controller"
+        kfp_ui_principal = f"cluster.local/ns/{self._namespace}/sa/kfp-ui"
+        katib_controller_principal = f"cluster.local/ns/{self._namespace}/sa/katib-controller"
+        istio_gateway_principal = f"cluster.local/ns/{self.istio_gateway_namespace}/sa/{self.istio_gateway_service_account}"  # noqa E501
+
         # Validate all config options
         try:
             config_data = {
                 "port": self.model.config["port"],
                 "manager_port": self.model.config["manager-port"],
                 "security_policy": self.model.config["security-policy"],
-                "istio_gateway_principal": self.model.config["istio-gateway-principal"],
-                "notebook_controller_principal": NOTEBOOK_CONTROLLER_PRINCIPAL,
-                "kfp_ui_principal": KFP_UI_PRINCIPAL,
-                "katib_controller_principal": KATIB_CONTROLLER_PRINCIPAL,
+                "istio_gateway_principal": istio_gateway_principal,
+                "notebook_controller_principal": notebook_controller_principal,
+                "kfp_ui_principal": kfp_ui_principal,
+                "katib_controller_principal": katib_controller_principal,
                 "service_mesh_mode": self.model.config["service-mesh-mode"],
             }
             config = CharmConfig(**config_data)
@@ -97,7 +100,6 @@ class KubeflowProfilesOperator(CharmBase):
             _profiles_container_meta.mounts[self._storage_name].location
         )
 
-        self._namespace = self.model.name
         self._name = self.model.app.name
         self._k8s_resource_handler = None
         self._lightkube_field_manager = "lightkube"
@@ -168,6 +170,16 @@ class KubeflowProfilesOperator(CharmBase):
                 ),
                 refresh_event=[self.on.config_changed, self.on.update_status],
             )
+
+    @property
+    def istio_gateway_namespace(self) -> str:
+        """Return Istio Gateway namespace configuration."""
+        return self.model.config["istio-gateway-namespace"]
+
+    @property
+    def istio_gateway_service_account(self) -> str:
+        """Return Istio Gateway Service Account configuration."""
+        return self.model.config["istio-gateway-service-account"]
 
     @property
     def profiles_container(self):
@@ -293,7 +305,7 @@ class KubeflowProfilesOperator(CharmBase):
             return [
                 ns.metadata.name
                 for ns in namespaces
-                if ns.metadata and ns.metadata.name and ns.metadata.name != "kubeflow"
+                if ns.metadata and ns.metadata.name and ns.metadata.name != self._namespace
             ]
         except ApiError as e:
             raise GenericCharmRuntimeError("Failed to list profile namespaces") from e

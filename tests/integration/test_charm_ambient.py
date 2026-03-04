@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 """Integration tests for Kueflow Profiles Operator."""
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 import jinja2
@@ -39,15 +40,6 @@ CONTAINERS_SECURITY_CONTEXT_MAP = generate_container_securitycontext_map(METADAT
 CONFIG_DATA = yaml.safe_load(Path("./config.yaml").read_text())
 DEFAULT_SECURITY_POLICY = CONFIG_DATA["options"]["security-policy"]["default"]
 
-ISTIO_GATEWAY_PRINCIPAL = "cluster.local/ns/kubeflow/sa/istio-ingress-k8s-istio"
-JUPYTER_CONTROLLER_PRINCIPAL = "cluster.local/ns/kubeflow/sa/jupyter-controller"
-KFP_UI_PRINCIPAL = "cluster.local/ns/kubeflow/sa/kfp-ui"
-KATIB_CONTROLLER_PRINCIPAL = "cluster.local/ns/kubeflow/sa/katib-controller"
-AMBIENT_CONFIG = {
-    "service-mesh-mode": "istio-ambient",
-    "istio-gateway-principal": ISTIO_GATEWAY_PRINCIPAL,
-}
-
 AUTHORIZATION_POLICY = create_namespaced_resource(
     group="security.istio.io",
     version="v1",
@@ -65,6 +57,29 @@ GATEWAY = create_namespaced_resource(
 AUTH_POLICY_NAME = "ns-owner-access-istio"
 
 
+@dataclass
+class Principals:
+    """Dataclass to model principals and ambient configuration."""
+
+    namespace: str
+
+    def __post_init__(self):
+        """Class to model principals and ambient configuration."""
+        self.istio_gateway_principal = (
+            f"cluster.local/ns/{self.namespace}/sa/istio-ingress-k8s-istio"
+        )
+        self.jupyter_controller_principal = (
+            f"cluster.local/ns/{self.namespace}/sa/jupyter-controller"
+        )
+        self.kfp_ui_principal = f"cluster.local/ns/{self.namespace}/sa/kfp-ui"
+        self.katib_controller_principal = f"cluster.local/ns/{self.namespace}/sa/katib-controller"
+        self.ambient_config = {
+            "service-mesh-mode": "istio-ambient",
+            "istio-gateway-namespace": self.namespace,
+            "istio-gateway-service-account": "istio-ingress-k8s-istio",
+        }
+
+
 @pytest.mark.abort_on_fail
 @pytest.mark.skip_if_deployed
 async def test_build_and_deploy(ops_test: OpsTest):
@@ -73,8 +88,9 @@ async def test_build_and_deploy(ops_test: OpsTest):
     kfam_image_path = METADATA["resources"]["kfam-image"]["upstream-source"]
     profile_image_path = METADATA["resources"]["profile-image"]["upstream-source"]
     resources = {"kfam-image": kfam_image_path, "profile-image": profile_image_path}
+    ambient_config = Principals(ops_test.model_name).ambient_config
 
-    await ops_test.model.deploy(my_charm, resources=resources, config=AMBIENT_CONFIG, trust=True)
+    await ops_test.model.deploy(my_charm, resources=resources, config=ambient_config, trust=True)
 
     await ops_test.model.wait_for_idle(
         apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
@@ -205,12 +221,14 @@ async def test_authorization_policy_has_correct_principals(
     # Convert the policy to a string to search for principals
     policy_str = str(ns_owner_auth_policy.to_dict())
 
+    principals = Principals(ops_test.model_name)
+
     # Check that all four principals are mentioned in the policy
     for principal in [
-        ISTIO_GATEWAY_PRINCIPAL,
-        JUPYTER_CONTROLLER_PRINCIPAL,
-        KFP_UI_PRINCIPAL,
-        KATIB_CONTROLLER_PRINCIPAL,
+        principals.istio_gateway_principal,
+        principals.jupyter_controller_principal,
+        principals.kfp_ui_principal,
+        principals.katib_controller_principal,
     ]:
         assert (
             principal in policy_str
