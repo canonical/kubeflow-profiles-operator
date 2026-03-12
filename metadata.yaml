@@ -13,8 +13,8 @@ containers:
     uid: 584792
     gid: 584792
     mounts:
-      - storage: config-profiles
-        location: /etc/profile-controller
+    - storage: config-profiles
+      location: /etc/profile-controller
   kubeflow-kfam:
     resource: kfam-image
     uid: 584792
@@ -31,7 +31,7 @@ resources:
     type: oci-image
     description: Access Management image
     auto-fetch: true
-    upstream-source: docker.io/charmedkubeflow/kfam:1.10.0-7fcf726
+    upstream-source: docker.io/charmedkubeflow/kfam:1.10.0-c537efa
 provides:
   provide-cmr-mesh:
     interface: cross_model_mesh
