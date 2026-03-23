@@ -31,7 +31,7 @@ resources:
     type: oci-image
     description: Access Management image
     auto-fetch: true
-    upstream-source: docker.io/charmedkubeflow/kfam:1.10.0-c537efa
+    upstream-source: docker.io/charmedkubeflow/kfam:2.0.0-rc.0-fdabbc8
 provides:
   provide-cmr-mesh:
     interface: cross_model_mesh
