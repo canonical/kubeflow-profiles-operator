@@ -199,6 +199,7 @@ class KubeflowProfilesOperator(CharmBase):
             "NOTEBOOK_CONTROLLER_PRINCIPAL": self._notebook_controller_principal,
             "KFP_UI_PRINCIPAL": self._kfp_ui_principal,
             "KATIB_CONTROLLER_PRINCIPAL": self._katib_controller_principal,
+            "ADDITIONAL_PRINCIPALS": "cluster.local/ns/myns/sa/my-sa,cluster.local/ns/other/sa/other-sa",
         }
 
     @property
