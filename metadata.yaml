@@ -10,8 +10,8 @@ docs: https://discourse.charmhub.io/t/charmed-kubeflow-profiles/8232
 containers:
   kubeflow-profiles:
     resource: profile-image
-    uid: 584792
-    gid: 584792
+    uid: 0
+    gid: 0
   kubeflow-kfam:
     resource: kfam-image
     uid: 584792
@@ -23,7 +23,7 @@ resources:
     auto-fetch: true
     # TODO: Replace image with upstream image or rock
     # once https://github.com/kubeflow/dashboard/pull/127 is merged
-    upstream-source: docker.io/charmedkubeflow/profile-controller:2.0.0-rc.0-ambient-0ec9623
+    upstream-source: docker.io/nohaihab/profile-controller:authpolicy
   kfam-image:
     type: oci-image
     description: Access Management image
