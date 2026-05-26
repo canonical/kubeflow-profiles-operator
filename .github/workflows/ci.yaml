@@ -157,7 +157,7 @@ jobs:
         if: failure()
       - name: Get juju status
         run: juju status
-        if: failure()
+        if: always()
       - name: Get kubeflow-profiles workload logs
         run: kubectl logs --tail 100 -n testing -l app.kubernetes.io/name=kubeflow-profiles -c kubeflow-profiles
         if: failure()
