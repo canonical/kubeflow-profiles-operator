@@ -237,3 +237,32 @@ def test_invalid_service_mesh_mode(
     harness.begin_with_initial_hooks()
     assert isinstance(harness.charm.model.unit.status, BlockedStatus)
     assert "Invalid config:" in harness.charm.model.unit.status.message
+
+
+@pytest.mark.parametrize(
+    "additional_principals",
+    [
+        "",
+        "cluster.local/ns/foo/sa/bar,cluster.local/ns/baz/sa/qux",
+    ],
+)
+def test_additional_principals_env(
+    harness: Harness,
+    mocked_kubernetes_service_patcher,
+    mocked_resource_handler,
+    mocked_service_mesh_consumer,
+    additional_principals: str,
+):
+    """Test ADDITIONAL_PRINCIPALS is set only when the config option is non-empty."""
+    harness.set_model_name("test_kubeflow")
+    if additional_principals:
+        harness.update_config({"additional-principals": additional_principals})
+    harness.begin_with_initial_hooks()
+    harness.container_pebble_ready(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
+    pebble_plan = harness.get_container_pebble_plan(WORKLOAD_CONTAINER_NAME_FOR_PROFILES)
+    pebble_plan_info = pebble_plan.to_dict()
+    env = pebble_plan_info["services"]["kubeflow-profiles"]["environment"]
+    if additional_principals:
+        assert env["ADDITIONAL_PRINCIPALS"] == additional_principals
+    else:
+        assert "ADDITIONAL_PRINCIPALS" not in env

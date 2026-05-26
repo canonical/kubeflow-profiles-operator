@@ -29,6 +29,12 @@ options:
       The Service Account name of Istio Ingress Gateway.
 
       When integrating with Istio Ambient set to `istio-ingress-k8s-istio`.
+  additional-principals:
+    type: string
+    default: ""
+    description: >
+      A comma-separated list of additional SPIFFE principals to allow access
+      to the profile controller. If empty, no additional principals are set.
   service-mesh-mode:
     type: string
     default: "istio-sidecar"
