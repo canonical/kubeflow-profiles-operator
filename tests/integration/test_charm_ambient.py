@@ -1,7 +1,8 @@
-# Copyright 2023 Canonical Ltd.
+# Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 """Integration tests for Kueflow Profiles Operator."""
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 import jinja2
@@ -13,15 +14,18 @@ from charmed_kubeflow_chisme.testing import (
     assert_alert_rules,
     assert_logging,
     assert_metrics_endpoint,
+    assert_path_reachable_through_ingress,
     assert_security_context,
     deploy_and_assert_grafana_agent,
+    deploy_and_integrate_service_mesh_charms,
     generate_container_securitycontext_map,
     get_alert_rules,
     get_pod_names,
+    integrate_with_service_mesh,
 )
-from charms_dependencies import ISTIO_PILOT
+from charms_dependencies import KUBEFLOW_DASHBOARD
 from lightkube import codecs
-from lightkube.generic_resource import create_global_resource
+from lightkube.generic_resource import create_global_resource, create_namespaced_resource
 from lightkube.resources.core_v1 import Namespace
 from lightkube.types import PatchType
 from pytest_operator.plugin import OpsTest
@@ -36,11 +40,50 @@ CONTAINERS_SECURITY_CONTEXT_MAP = generate_container_securitycontext_map(METADAT
 CONFIG_DATA = yaml.safe_load(Path("./config.yaml").read_text())
 DEFAULT_SECURITY_POLICY = CONFIG_DATA["options"]["security-policy"]["default"]
 
+AUTHORIZATION_POLICY = create_namespaced_resource(
+    group="security.istio.io",
+    version="v1",
+    kind="AuthorizationPolicy",
+    plural="authorizationpolicies",
+)
+
+GATEWAY = create_namespaced_resource(
+    group="gateway.networking.k8s.io",
+    version="v1",
+    kind="Gateway",
+    plural="gateways",
+)
+
+AUTH_POLICY_NAME = "ns-owner-access-istio"
+
+
+@dataclass
+class Principals:
+    """Dataclass to model principals and ambient configuration."""
+
+    namespace: str
+
+    def __post_init__(self):
+        """Class to model principals and ambient configuration."""
+        self.istio_gateway_principal = (
+            f"cluster.local/ns/{self.namespace}/sa/istio-ingress-k8s-istio"
+        )
+        self.jupyter_controller_principal = (
+            f"cluster.local/ns/{self.namespace}/sa/jupyter-controller"
+        )
+        self.kfp_ui_principal = f"cluster.local/ns/{self.namespace}/sa/kfp-ui"
+        self.katib_controller_principal = f"cluster.local/ns/{self.namespace}/sa/katib-controller"
+        self.ambient_config = {
+            "service-mesh-mode": "istio-ambient",
+            "istio-gateway-namespace": self.namespace,
+            "istio-gateway-service-account": "istio-ingress-k8s-istio",
+        }
+
 
 @pytest.mark.abort_on_fail
 @pytest.mark.skip_if_deployed
 async def test_build_and_deploy(ops_test: OpsTest, request):
-    """Build the charm-under-test and deploy it."""
+    """Build and deploy the charm and its dependencies."""
     entity_url = (
         await ops_test.build_charm(".")
         if not (entity_url := request.config.getoption("--charm-path"))
@@ -49,19 +92,16 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
     kfam_image_path = METADATA["resources"]["kfam-image"]["upstream-source"]
     profile_image_path = METADATA["resources"]["profile-image"]["upstream-source"]
     resources = {"kfam-image": kfam_image_path, "profile-image": profile_image_path}
+    ambient_config = Principals(ops_test.model_name).ambient_config
 
-    await ops_test.model.deploy(entity_url, resources=resources, trust=True)
+    await ops_test.model.deploy(entity_url, resources=resources, config=ambient_config, trust=True)
 
     await ops_test.model.wait_for_idle(
         apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
     )
 
-    # The profile controller needs AuthorizationPolicies to create Profiles
-    # Let's just deploy istio-pilot to provide the k8s cluster with this CRD
-    await ops_test.model.deploy(
-        entity_url=ISTIO_PILOT.charm,
-        channel=ISTIO_PILOT.channel,
-        trust=ISTIO_PILOT.trust,
+    await deploy_and_integrate_service_mesh_charms(
+        app=CHARM_NAME, model=ops_test.model, relate_to_ingress=False
     )
 
     # Deploying grafana-agent-k8s and add all relations
@@ -69,8 +109,32 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
         ops_test.model, CHARM_NAME, metrics=True, dashboard=False, logging=True
     )
 
+    # Deploy Kubeflow Dashboard and relate to the charm
+    await ops_test.model.deploy(
+        KUBEFLOW_DASHBOARD.charm,
+        channel=KUBEFLOW_DASHBOARD.channel,
+        trust=KUBEFLOW_DASHBOARD.trust,
+    )
 
-async def test_status(ops_test: OpsTest):
+    await ops_test.model.integrate(
+        f"{KUBEFLOW_DASHBOARD.charm}:kubeflow-profiles", f"{CHARM_NAME}:kubeflow-profiles"
+    )
+
+    await integrate_with_service_mesh(
+        app=KUBEFLOW_DASHBOARD.charm,
+        model=ops_test.model,
+    )
+
+    # Wait for everything to be active and idle
+    await ops_test.model.wait_for_idle(
+        [KUBEFLOW_DASHBOARD.charm, CHARM_NAME],
+        status="active",
+        raise_on_error=True,
+        timeout=600,
+    )
+
+
+async def test_status(ops_test):
     """Assert on the unit status."""
     assert ops_test.model.applications[CHARM_NAME].units[0].workload_status == "active"
 
@@ -81,14 +145,14 @@ async def test_logging(ops_test: OpsTest):
     await assert_logging(app)
 
 
-async def test_alert_rules(ops_test: OpsTest):
+async def test_alert_rules(ops_test):
     """Test check charm alert rules and rules defined in relation data bag."""
     app = ops_test.model.applications[CHARM_NAME]
     alert_rules = get_alert_rules()
     await assert_alert_rules(app, alert_rules)
 
 
-async def test_metrics_endpoint(ops_test: OpsTest):
+async def test_metrics_endpoint(ops_test):
     """Test metrics_endpoints are defined in relation data bag and their accessibility.
 
     This function gets all the metrics_endpoints from the relation data bag, checks if
@@ -100,15 +164,13 @@ async def test_metrics_endpoint(ops_test: OpsTest):
 
 
 # Parameterize to two different profiles?
-async def test_profile_creation(lightkube_client: lightkube.Client, profile: str):
+async def test_profile_creation(lightkube_client, profile):
     """Test whether a namespace was created for this profile."""
     profile_name = profile
     validate_profile_namespace(lightkube_client, profile_name, DEFAULT_SECURITY_POLICY)
 
 
-async def test_config_option_propagation(
-    ops_test: OpsTest, lightkube_client: lightkube.Client, profile: str
-):
+async def test_config_option_propagation(ops_test, lightkube_client, profile):
     """Test that changes to the security policy are properly propagated."""
     new_security_policy = "baseline"
     await ops_test.model.applications[CHARM_NAME].set_config(
@@ -134,7 +196,69 @@ async def test_config_option_propagation(
     validate_profile_namespace(lightkube_client, profile_name, DEFAULT_SECURITY_POLICY)
 
 
-async def test_health_check_profiles(ops_test: OpsTest):
+@retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_delay(60), reraise=True)
+async def test_waypoint_gateway_created_for_profile(
+    ops_test: OpsTest, lightkube_client: lightkube.Client, profile
+):
+    """Test whether the waypoint gateway is created in the profile namespace."""
+    gateway_objects = list(lightkube_client.list(res=GATEWAY, namespace=profile))
+    assert (
+        len(gateway_objects) == 1
+    ), f"Expected 1 Gateway object in namespace '{profile}', found {len(gateway_objects)}"
+
+
+async def test_authorization_policy_has_correct_principals(
+    ops_test: OpsTest, lightkube_client: lightkube.Client, profile
+):
+    """Test whether the authorization policy contains the four configured principals."""
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_delay(60), reraise=True
+    )
+    def get_auth_policy():
+        return lightkube_client.get(
+            res=AUTHORIZATION_POLICY, name=AUTH_POLICY_NAME, namespace=profile
+        )
+
+    ns_owner_auth_policy = get_auth_policy()
+
+    # Convert the policy to a string to search for principals
+    policy_str = str(ns_owner_auth_policy.to_dict())
+
+    principals = Principals(ops_test.model_name)
+
+    # Check that all four principals are mentioned in the policy
+    for principal in [
+        principals.istio_gateway_principal,
+        principals.jupyter_controller_principal,
+        principals.kfp_ui_principal,
+        principals.katib_controller_principal,
+    ]:
+        assert (
+            principal in policy_str
+        ), f"Expected principal {principal} not found in authorization policy"
+
+
+async def test_dashboard_to_kfam_communication(ops_test: OpsTest):
+    """
+    Test dashboard -> Central Dashboard -> KFAM communication via the ambient mesh.
+
+    The frontend (browser) that shows the profiles dropdown sends a request to the
+    Central Dashboard API (`/api/workgroup/exists`) to obtain profile
+    information. The Central Dashboard will in turn make a request to KFAM to resolve
+    or validate the requested workgroup information. This test exercises that
+    end-to-end path through the ambient service mesh so we verify the Central Dashboard
+    can reach KFAM and return information to the frontend.
+    """
+    await assert_path_reachable_through_ingress(
+        http_path="/api/workgroup/exists",
+        namespace=ops_test.model.name,
+        headers={"kubeflow-userid": "test"},
+        expected_status=200,
+    )
+
+
+async def test_health_check_profiles(ops_test):
     """Test whether the profiles health check endpoint responds with 200."""
     status = await ops_test.model.get_status()
     profiles_units = status["applications"]["kubeflow-profiles"]["units"]
@@ -143,7 +267,7 @@ async def test_health_check_profiles(ops_test: OpsTest):
     assert result.status_code == 200
 
 
-async def test_health_check_kfam(ops_test: OpsTest):
+async def test_health_check_kfam(ops_test):
     """Test whether the kfam health check endpoint responds with 200."""
     status = await ops_test.model.get_status()
     profiles_units = status["applications"]["kubeflow-profiles"]["units"]
@@ -197,7 +321,7 @@ def _validate_if_exists(if_exists):
 
 
 def create_all_from_yaml(
-    yaml_file: str, if_exists: list[str, None] = None, lightkube_client: lightkube.Client = None
+    yaml_file: str, if_exists: str | None = None, lightkube_client: lightkube.Client = None
 ):
     """Create all k8s resources listed in a YAML file via lightkube.
 
