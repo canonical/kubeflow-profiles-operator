@@ -70,6 +70,7 @@ class KubeflowProfilesOperator(CharmBase):
                 "notebook_controller_principal": notebook_controller_principal,
                 "kfp_ui_principal": kfp_ui_principal,
                 "katib_controller_principal": katib_controller_principal,
+                "additional_principals": self.model.config["additional-principals"],
                 "service_mesh_mode": self.model.config["service-mesh-mode"],
             }
             config = CharmConfig(**config_data)
@@ -104,6 +105,7 @@ class KubeflowProfilesOperator(CharmBase):
         self._notebook_controller_principal = config.notebook_controller_principal
         self._kfp_ui_principal = config.kfp_ui_principal
         self._katib_controller_principal = config.katib_controller_principal
+        self._additional_principals = config.additional_principals
         self._service_mesh_mode = config.service_mesh_mode
         # Automatically determine create_waypoint based on service_mesh_mode
         self._create_waypoint = config.service_mesh_mode == "istio-ambient"
@@ -194,12 +196,15 @@ class KubeflowProfilesOperator(CharmBase):
     @property
     def _profiles_service_environment(self):
         """Return environment variables for kubeflow-profiles container."""
-        return {
+        env = {
             "ISTIO_INGRESS_GATEWAY_PRINCIPAL": self._istio_gateway_principal,  # noqa E501
             "NOTEBOOK_CONTROLLER_PRINCIPAL": self._notebook_controller_principal,
             "KFP_UI_PRINCIPAL": self._kfp_ui_principal,
             "KATIB_CONTROLLER_PRINCIPAL": self._katib_controller_principal,
         }
+        if self._additional_principals:
+            env["ADDITIONAL_PRINCIPALS"] = self._additional_principals
+        return env
 
     @property
     def _kfam_service_environment(self):
