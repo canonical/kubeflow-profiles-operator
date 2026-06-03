@@ -39,14 +39,18 @@ DEFAULT_SECURITY_POLICY = CONFIG_DATA["options"]["security-policy"]["default"]
 
 @pytest.mark.abort_on_fail
 @pytest.mark.skip_if_deployed
-async def test_build_and_deploy(ops_test: OpsTest):
+async def test_build_and_deploy(ops_test: OpsTest, request):
     """Build the charm-under-test and deploy it."""
-    my_charm = await ops_test.build_charm(".")
+    entity_url = (
+        await ops_test.build_charm(".")
+        if not (entity_url := request.config.getoption("--charm-path"))
+        else entity_url
+    )
     kfam_image_path = METADATA["resources"]["kfam-image"]["upstream-source"]
     profile_image_path = METADATA["resources"]["profile-image"]["upstream-source"]
     resources = {"kfam-image": kfam_image_path, "profile-image": profile_image_path}
 
-    await ops_test.model.deploy(my_charm, resources=resources, trust=True)
+    await ops_test.model.deploy(entity_url, resources=resources, trust=True)
 
     await ops_test.model.wait_for_idle(
         apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
