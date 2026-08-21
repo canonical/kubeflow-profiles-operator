@@ -21,7 +21,7 @@ resources:
     type: oci-image
     description: Profile controller image
     auto-fetch: true
-    upstream-source: docker.io/charmedkubeflow/profile-controller:1.10.0-06ad3c6
+    upstream-source: docker.io/charmedkubeflow/profile-controller:1.10.0-84088ea-20260821100312
   kfam-image:
     type: oci-image
     description: Access Management image
