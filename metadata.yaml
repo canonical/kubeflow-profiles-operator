@@ -23,7 +23,7 @@ resources:
     auto-fetch: true
     # TODO: Replace image with upstream image or rock
     # once https://github.com/kubeflow/dashboard/pull/127 is merged
-    upstream-source: docker.io/charmedkubeflow/profile-controller:2.0.0-rc.0-ambient1-919a71a-20260824094400
+    upstream-source: docker.io/charmedkubeflow/profile-controller:2.0.0-rc.0-ambient1-919a71a-20260901050928
   kfam-image:
     type: oci-image
     description: Access Management image
