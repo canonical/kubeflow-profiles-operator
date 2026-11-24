@@ -21,14 +21,12 @@ resources:
     type: oci-image
     description: Profile controller image
     auto-fetch: true
-    # TODO: Replace image with upstream image or rock
-    # once https://github.com/kubeflow/dashboard/pull/127 is merged
     upstream-source: docker.io/charmedkubeflow/profile-controller:2.0.1-ambient-48d6719-20261124085231
   kfam-image:
     type: oci-image
     description: Access Management image
     auto-fetch: true
-    upstream-source: docker.io/charmedkubeflow/kfam:2.0.0-rc.0-919a71a-20260824094403
+    upstream-source: ghcr.io/kubeflow/dashboard/access-management:v2.0.1
 provides:
   provide-cmr-mesh:
     interface: cross_model_mesh

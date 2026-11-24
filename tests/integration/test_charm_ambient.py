@@ -17,7 +17,6 @@ from charmed_kubeflow_chisme.testing import (
     assert_path_reachable_through_ingress,
     assert_security_context,
     deploy_and_assert_grafana_agent,
-    deploy_and_integrate_service_mesh_charms,
     generate_container_securitycontext_map,
     get_alert_rules,
     get_pod_names,
@@ -36,6 +35,7 @@ log = logging.getLogger(__name__)
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 CHARM_NAME = METADATA["name"]
 CONTAINERS_SECURITY_CONTEXT_MAP = generate_container_securitycontext_map(METADATA)
+ISTIO_CHANNEL = "1.31/stable"
 
 CONFIG_DATA = yaml.safe_load(Path("./config.yaml").read_text())
 DEFAULT_SECURITY_POLICY = CONFIG_DATA["options"]["security-policy"]["default"]
@@ -100,7 +100,23 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
         apps=[CHARM_NAME], status="active", raise_on_blocked=True, timeout=600
     )
 
-    await deploy_and_integrate_service_mesh_charms(
+    # Deploy the service-mesh charms via the Juju CLI with an explicit channel.
+    for charm, options in (
+        ("istio-k8s", ("--config", "platform=")),
+        ("istio-ingress-k8s", ()),
+        ("istio-beacon-k8s", ("--config", "model-on-mesh=true")),
+    ):
+        await ops_test.juju(
+            "deploy", charm, "--channel", ISTIO_CHANNEL, "--trust", *options, check=True
+        )
+        await ops_test.model.wait_for_idle(
+            apps=[charm],
+            status="active",
+            raise_on_error=False,
+            timeout=900,
+        )
+
+    await integrate_with_service_mesh(
         app=CHARM_NAME, model=ops_test.model, relate_to_ingress=False
     )
 
