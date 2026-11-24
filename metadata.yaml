@@ -14,21 +14,32 @@ containers:
     gid: 584792
   kubeflow-kfam:
     resource: kfam-image
-    uid: 584792
-    gid: 584792
+    # TODO: When replacing this upstream image with the final rock, restore UID/GID to 584792:584792.
+    # Match the upstream access-management image's USER 65532:65532.
+    uid: 65532
+    gid: 65532
 resources:
   profile-image:
     type: oci-image
     description: Profile controller image
     auto-fetch: true
+<<<<<<< HEAD
     # TODO: Replace image with upstream image or rock
     # once https://github.com/kubeflow/dashboard/pull/127 is merged
     upstream-source: docker.io/charmedkubeflow/profile-controller:2.0.0-rc.0-ambient1-653ced1-20260824094356
+=======
+    # TODO: Replace with the final v2.0.1 profile-controller rock once published.
+    upstream-source: docker.io/nohaihab/profile-controller:pr-50-1e28990-rock
+>>>>>>> 5c359ff (chore: update Kubeflow Profiles to v2.0.1 (#362))
   kfam-image:
     type: oci-image
     description: Access Management image
     auto-fetch: true
+<<<<<<< HEAD
     upstream-source: docker.io/charmedkubeflow/kfam:2.0.0-rc.0-653ced1-20260824094351
+=======
+    upstream-source: ghcr.io/kubeflow/dashboard/access-management:v2.0.1
+>>>>>>> 5c359ff (chore: update Kubeflow Profiles to v2.0.1 (#362))
 provides:
   provide-cmr-mesh:
     interface: cross_model_mesh
