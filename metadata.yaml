@@ -14,17 +14,14 @@ containers:
     gid: 584792
   kubeflow-kfam:
     resource: kfam-image
-    # TODO: When replacing this upstream image with the final rock, restore UID/GID to 584792:584792.
-    # Match the upstream access-management image's USER 65532:65532.
-    uid: 65532
-    gid: 65532
+    uid: 584792
+    gid: 584792
 resources:
   profile-image:
     type: oci-image
     description: Profile controller image
     auto-fetch: true
-    # TODO: Replace with the final v2.0.1 profile-controller rock once published.
-    upstream-source: docker.io/nohaihab/profile-controller:pr-50-1e28990-rock
+    upstream-source: docker.io/charmedkubeflow/profile-controller:2.0.1-ambient-48d6719-20261124085231
   kfam-image:
     type: oci-image
     description: Access Management image
